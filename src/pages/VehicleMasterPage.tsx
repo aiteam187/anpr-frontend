@@ -1,0 +1,889 @@
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Ban, Eye, Link2, Pencil, Plus, Power, RotateCcw, Search, UploadCloud } from 'lucide-react';
+import PageHeader from '../components/ui/PageHeader';
+import Panel from '../components/ui/Panel';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
+import { SkeletonTable } from '../components/ui/Skeleton';
+import { inputClass } from '../components/ui/FormField';
+import VehicleDetailsModal from '../features/whitelist/VehicleDetailsModal';
+import AddVehicleModal from '../features/whitelist/AddVehicleModal';
+import BulkUploadModal from '../features/whitelist/BulkUploadModal';
+import BlacklistReasonModal from '../features/whitelist/BlacklistReasonModal';
+import VehicleInfoModal from '../features/whitelist/VehicleInfoModal';
+import SimpleMasterPage from '../features/masters/SimpleMasterPage';
+import { LIST_TYPE_LABELS, LIST_TYPE_STYLES } from '../features/vehicleSearch/listTypeBadge';
+import { formatDateTime } from '../utils/format';
+import { isPastDate } from '../utils/validation';
+import {
+  activateAuthorizedVehicle,
+  addAuthorizedVehicle,
+  bulkUploadAuthorizedVehicles,
+  deactivateAuthorizedVehicle,
+  getAuthorizedVehicles,
+  switchListType,
+  updateVehicleDetails,
+} from '../services/authorizedVehiclesService';
+import { getEmployees, vehicleTypesApi } from '../services/mastersService';
+import type { AuthorizedVehicle, ListType } from '../types/authorizedVehicle';
+import type { Employee } from '../types/masters';
+
+type Tab = 'vehicles' | 'allowlist' | 'blacklist' | 'vehicle-types';
+
+const TABS: { key: Tab; label: string }[] = [
+  { key: 'vehicles', label: 'Vehicles' },
+  { key: 'allowlist', label: 'Allowlist' },
+  { key: 'blacklist', label: 'Blacklist' },
+  { key: 'vehicle-types', label: 'Vehicle Types' },
+];
+
+export default function VehicleMasterPage() {
+  const [tab, setTab] = useState<Tab>('vehicles');
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [vehicleTypes, setVehicleTypes] = useState<string[]>([]);
+
+  const loadEmployees = useCallback(async () => {
+    try {
+      const res = await getEmployees();
+      setEmployees(res.filter((e) => e.enabled));
+    } catch {
+      // Employee lookup is a convenience feature for the link field — silently skip if it fails to load.
+    }
+  }, []);
+
+  const loadVehicleTypes = useCallback(async () => {
+    try {
+      const res = await vehicleTypesApi.list();
+      setVehicleTypes(res.filter((t) => t.enabled).map((t) => t.name));
+    } catch {
+      // Vehicle Type Master lookup is a convenience feature for the dropdown — silently skip if it fails to load.
+    }
+  }, []);
+
+  useEffect(() => {
+    loadEmployees();
+    loadVehicleTypes();
+  }, [loadEmployees, loadVehicleTypes]);
+
+  return (
+    <div className="space-y-4">
+      <PageHeader
+        title="Vehicle Master"
+        description="Allowlist, blacklist, and vehicle types — all in one place"
+      />
+
+      <div className="flex gap-1 border-b border-slate-200">
+        {TABS.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => setTab(t.key)}
+            className={`px-3 py-2 text-sm font-medium transition-colors ${
+              tab === t.key
+                ? 'border-b-2 border-blue-600 text-blue-600'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'vehicles' && <VehiclesTab employees={employees} vehicleTypes={vehicleTypes} />}
+      {tab === 'allowlist' && <AllowlistTab employees={employees} vehicleTypes={vehicleTypes} />}
+      {tab === 'blacklist' && <BlacklistTab employees={employees} vehicleTypes={vehicleTypes} />}
+      {tab === 'vehicle-types' && (
+        <SimpleMasterPage
+          title="Vehicle Types"
+          description="Options available in every vehicle form's Vehicle Type dropdown"
+          itemLabel="Vehicle Type"
+          api={vehicleTypesApi}
+        />
+      )}
+    </div>
+  );
+}
+
+interface TabProps {
+  employees: Employee[];
+  vehicleTypes: string[];
+}
+
+const LIST_TYPE_FILTERS: { value: ListType | ''; label: string }[] = [
+  { value: '', label: 'All Lists' },
+  { value: 'whitelist', label: 'Allowlist' },
+  { value: 'blacklist', label: 'Blacklist' },
+  { value: 'visitor', label: 'Visitor' },
+];
+
+/** Compact insurance/PUC expiry summary for a table row — mirrors the full breakdown in VehicleInfoModal but condensed to fit one cell. */
+function ComplianceCell({ vehicle: v }: { vehicle: AuthorizedVehicle }) {
+  const insuranceExpired = isPastDate(v.insurance_validity);
+  const pucExpired = isPastDate(v.puc_validity);
+  if (!v.insurance_validity && !v.puc_validity) {
+    return <span className="text-slate-400">—</span>;
+  }
+  return (
+    <div className="space-y-0.5 text-xs">
+      <p className={insuranceExpired ? 'font-medium text-red-600' : 'text-slate-500'}>
+        Ins: {v.insurance_validity ? v.insurance_validity.slice(0, 10) : '—'}
+        {insuranceExpired && ' (expired)'}
+      </p>
+      <p className={pucExpired ? 'font-medium text-red-600' : 'text-slate-500'}>
+        PUC: {v.puc_validity ? v.puc_validity.slice(0, 10) : '—'}
+        {pucExpired && ' (expired)'}
+      </p>
+    </div>
+  );
+}
+
+/** Default overview tab — every vehicle regardless of list type, in one table with a list-type filter. The dedicated Allowlist/Blacklist tabs exist alongside this for one-click access to just those lists; this tab is for browsing/searching everything at once. */
+function VehiclesTab({ employees, vehicleTypes }: TabProps) {
+  const [vehicles, setVehicles] = useState<AuthorizedVehicle[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const [listTypeFilter, setListTypeFilter] = useState<ListType | ''>('');
+  const [editingVehicle, setEditingVehicle] = useState<AuthorizedVehicle | null>(null);
+  const [viewingVehicle, setViewingVehicle] = useState<AuthorizedVehicle | null>(null);
+  const [toggleTarget, setToggleTarget] = useState<AuthorizedVehicle | null>(null);
+  const [blacklistTarget, setBlacklistTarget] = useState<AuthorizedVehicle | null>(null);
+  const [restoreTarget, setRestoreTarget] = useState<AuthorizedVehicle | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showBulkModal, setShowBulkModal] = useState(false);
+
+  const refresh = useCallback(async () => {
+    try {
+      const res = await getAuthorizedVehicles();
+      setVehicles(res);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load vehicles');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  const handleAddVehicle = async (payload: Parameters<typeof addAuthorizedVehicle>[0]) => {
+    await addAuthorizedVehicle(payload);
+    setShowAddModal(false);
+    await refresh();
+  };
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toUpperCase();
+    return vehicles.filter((v) => {
+      if (listTypeFilter && v.list_type !== listTypeFilter) return false;
+      if (!q) return true;
+      return (
+        v.plate_number.toUpperCase().includes(q) ||
+        (v.owner_name ?? '').toUpperCase().includes(q) ||
+        (v.owner_employee_id ?? '').toUpperCase().includes(q) ||
+        (v.owner_phone ?? '').toUpperCase().includes(q)
+      );
+    });
+  }, [vehicles, query, listTypeFilter]);
+
+  const handleSaveDetails = async (payload: Parameters<typeof updateVehicleDetails>[1]) => {
+    if (!editingVehicle) return;
+    await updateVehicleDetails(editingVehicle.plate_number, payload);
+    setEditingVehicle(null);
+    await refresh();
+  };
+
+  const handleToggleActive = async () => {
+    if (!toggleTarget) return;
+    setActionError(null);
+    try {
+      if (toggleTarget.is_active) {
+        await deactivateAuthorizedVehicle(toggleTarget.plate_number);
+      } else {
+        await activateAuthorizedVehicle(toggleTarget.plate_number);
+      }
+      setToggleTarget(null);
+      await refresh();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Failed to update vehicle status');
+      throw err;
+    }
+  };
+
+  const handleBlacklist = async (reason: string) => {
+    if (!blacklistTarget) return;
+    await switchListType(blacklistTarget.plate_number, { list_type: 'blacklist', blacklist_reason: reason });
+    setBlacklistTarget(null);
+    await refresh();
+  };
+
+  const handleRestore = async () => {
+    if (!restoreTarget) return;
+    await switchListType(restoreTarget.plate_number, { list_type: 'whitelist' });
+    setRestoreTarget(null);
+    await refresh();
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-end gap-2">
+        <button
+          type="button"
+          onClick={() => setShowBulkModal(true)}
+          className="flex items-center gap-1.5 rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
+        >
+          <UploadCloud className="h-4 w-4" />
+          Bulk Upload
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowAddModal(true)}
+          className="flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500"
+        >
+          <Plus className="h-4 w-4" />
+          Add Vehicle
+        </button>
+      </div>
+
+      {actionError && <p className="text-sm text-red-600">{actionError}</p>}
+
+      <Panel title="Filters">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              className={`${inputClass} pl-9`}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Number plate, owner, employee ID, phone…"
+            />
+          </div>
+          <select
+            className={inputClass}
+            value={listTypeFilter}
+            onChange={(e) => setListTypeFilter(e.target.value as ListType | '')}
+          >
+            {LIST_TYPE_FILTERS.map((f) => (
+              <option key={f.value} value={f.value}>
+                {f.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </Panel>
+
+      <Panel title={`Vehicles (${filtered.length})`}>
+        {loading ? (
+          <SkeletonTable columns={8} rows={5} />
+        ) : error ? (
+          <p className="py-6 text-center text-sm text-red-600">{error}</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="text-xs text-slate-500">
+                  <th className="pb-2 font-medium">Number Plate</th>
+                  <th className="pb-2 font-medium">List</th>
+                  <th className="pb-2 font-medium">Owner</th>
+                  <th className="pb-2 font-medium">Employee ID</th>
+                  <th className="pb-2 font-medium">Vehicle Type</th>
+                  <th className="pb-2 font-medium">Compliance</th>
+                  <th className="pb-2 font-medium">Status</th>
+                  <th className="pb-2 font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="py-6 text-center text-slate-400">
+                      No vehicles found
+                    </td>
+                  </tr>
+                )}
+                {filtered.map((v) => (
+                  <tr key={v.plate_number} className="border-t border-slate-200">
+                    <td className="py-2.5 font-mono font-semibold text-slate-900">
+                      {v.plate_number}
+                    </td>
+                    <td className="py-2.5">
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${LIST_TYPE_STYLES[v.list_type]}`}
+                      >
+                        {LIST_TYPE_LABELS[v.list_type]}
+                      </span>
+                    </td>
+                    <td className="py-2.5 text-slate-600">{v.owner_name || '—'}</td>
+                    <td className="py-2.5 text-slate-500">
+                      <div className="flex items-center gap-1.5">
+                        {v.employee_id != null && (
+                          <Link2 className="h-3.5 w-3.5 text-blue-500" aria-label="Linked to Employee Master" />
+                        )}
+                        {v.owner_employee_id || '—'}
+                      </div>
+                    </td>
+                    <td className="py-2.5 text-slate-500">{v.vehicle_type || '—'}</td>
+                    <td className="py-2.5">
+                      <ComplianceCell vehicle={v} />
+                    </td>
+                    <td className="py-2.5">
+                      {v.is_active ? (
+                        <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                          Active
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                          Inactive
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-2.5">
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setViewingVehicle(v)}
+                          className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-blue-600"
+                          title="View all details"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingVehicle(v)}
+                          className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                          title="Edit details"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setToggleTarget(v)}
+                          className={`rounded-md p-1.5 hover:bg-slate-100 ${
+                            v.is_active ? 'text-amber-600 hover:text-amber-700' : 'text-emerald-600 hover:text-emerald-700'
+                          }`}
+                          title={v.is_active ? 'Deactivate' : 'Activate'}
+                        >
+                          <Power className="h-4 w-4" />
+                        </button>
+                        {v.list_type === 'whitelist' && (
+                          <button
+                            type="button"
+                            onClick={() => setBlacklistTarget(v)}
+                            className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-red-700"
+                            title="Move to blacklist"
+                          >
+                            <Ban className="h-4 w-4" />
+                          </button>
+                        )}
+                        {v.list_type === 'blacklist' && (
+                          <button
+                            type="button"
+                            onClick={() => setRestoreTarget(v)}
+                            className="flex items-center gap-1 rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-emerald-700"
+                            title="Restore to allowlist"
+                          >
+                            <RotateCcw className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Panel>
+
+      {showAddModal && (
+        <AddVehicleModal
+          employees={employees}
+          vehicleTypes={vehicleTypes}
+          onClose={() => setShowAddModal(false)}
+          onSubmit={handleAddVehicle}
+        />
+      )}
+      {showBulkModal && (
+        <BulkUploadModal
+          onClose={() => {
+            setShowBulkModal(false);
+            refresh();
+          }}
+          onUpload={bulkUploadAuthorizedVehicles}
+        />
+      )}
+      {viewingVehicle && (
+        <VehicleInfoModal vehicle={viewingVehicle} onClose={() => setViewingVehicle(null)} />
+      )}
+      {editingVehicle && (
+        <VehicleDetailsModal
+          vehicle={editingVehicle}
+          vehicleTypes={vehicleTypes}
+          employees={employees}
+          onClose={() => setEditingVehicle(null)}
+          onSubmit={handleSaveDetails}
+        />
+      )}
+      {toggleTarget && (
+        <ConfirmDialog
+          title={toggleTarget.is_active ? 'Deactivate Vehicle' : 'Activate Vehicle'}
+          message={
+            toggleTarget.is_active
+              ? `Deactivate ${toggleTarget.plate_number}? It stops being treated as authorized until reactivated.`
+              : `Activate ${toggleTarget.plate_number}? It will be treated as authorized again.`
+          }
+          confirmLabel={toggleTarget.is_active ? 'Deactivate' : 'Activate'}
+          danger={toggleTarget.is_active}
+          onConfirm={handleToggleActive}
+          onClose={() => setToggleTarget(null)}
+        />
+      )}
+      {blacklistTarget && (
+        <BlacklistReasonModal
+          plateNumber={blacklistTarget.plate_number}
+          onClose={() => setBlacklistTarget(null)}
+          onSubmit={handleBlacklist}
+        />
+      )}
+      {restoreTarget && (
+        <ConfirmDialog
+          title="Restore Vehicle"
+          message={`Restore ${restoreTarget.plate_number} to the allowlist? It will be allowed entry again.`}
+          confirmLabel="Restore"
+          onConfirm={handleRestore}
+          onClose={() => setRestoreTarget(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function AllowlistTab({ employees, vehicleTypes }: TabProps) {
+  const [vehicles, setVehicles] = useState<AuthorizedVehicle[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const [editingVehicle, setEditingVehicle] = useState<AuthorizedVehicle | null>(null);
+  const [viewingVehicle, setViewingVehicle] = useState<AuthorizedVehicle | null>(null);
+  const [toggleTarget, setToggleTarget] = useState<AuthorizedVehicle | null>(null);
+  const [blacklistTarget, setBlacklistTarget] = useState<AuthorizedVehicle | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showBulkModal, setShowBulkModal] = useState(false);
+
+  const refresh = useCallback(async () => {
+    try {
+      const res = await getAuthorizedVehicles();
+      setVehicles(res.filter((v) => v.list_type === 'whitelist'));
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load allowlist');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  const handleAddVehicle = async (payload: Parameters<typeof addAuthorizedVehicle>[0]) => {
+    await addAuthorizedVehicle(payload);
+    setShowAddModal(false);
+    await refresh();
+  };
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toUpperCase();
+    if (!q) return vehicles;
+    return vehicles.filter(
+      (v) =>
+        v.plate_number.toUpperCase().includes(q) ||
+        (v.owner_name ?? '').toUpperCase().includes(q) ||
+        (v.owner_employee_id ?? '').toUpperCase().includes(q) ||
+        (v.owner_phone ?? '').toUpperCase().includes(q),
+    );
+  }, [vehicles, query]);
+
+  const handleSaveDetails = async (payload: Parameters<typeof updateVehicleDetails>[1]) => {
+    if (!editingVehicle) return;
+    await updateVehicleDetails(editingVehicle.plate_number, payload);
+    setEditingVehicle(null);
+    await refresh();
+  };
+
+  const handleToggleActive = async () => {
+    if (!toggleTarget) return;
+    setActionError(null);
+    try {
+      if (toggleTarget.is_active) {
+        await deactivateAuthorizedVehicle(toggleTarget.plate_number);
+      } else {
+        await activateAuthorizedVehicle(toggleTarget.plate_number);
+      }
+      setToggleTarget(null);
+      await refresh();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Failed to update vehicle status');
+      throw err;
+    }
+  };
+
+  const handleBlacklist = async (reason: string) => {
+    if (!blacklistTarget) return;
+    await switchListType(blacklistTarget.plate_number, { list_type: 'blacklist', blacklist_reason: reason });
+    setBlacklistTarget(null);
+    await refresh();
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-end gap-2">
+        <button
+          type="button"
+          onClick={() => setShowBulkModal(true)}
+          className="flex items-center gap-1.5 rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
+        >
+          <UploadCloud className="h-4 w-4" />
+          Bulk Upload
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowAddModal(true)}
+          className="flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500"
+        >
+          <Plus className="h-4 w-4" />
+          Add Vehicle
+        </button>
+      </div>
+
+      {actionError && <p className="text-sm text-red-600">{actionError}</p>}
+
+      <Panel
+        title={`Allowlisted Vehicles (${filtered.length})`}
+        action={
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+            <input
+              className={`${inputClass} w-56 py-1 pl-7 text-xs`}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Plate, owner, employee ID, phone…"
+            />
+          </div>
+        }
+      >
+        {loading ? (
+          <SkeletonTable columns={7} rows={5} />
+        ) : error ? (
+          <p className="py-6 text-center text-sm text-red-600">{error}</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="text-xs text-slate-500">
+                  <th className="pb-2 font-medium">Number Plate</th>
+                  <th className="pb-2 font-medium">Owner</th>
+                  <th className="pb-2 font-medium">Employee ID</th>
+                  <th className="pb-2 font-medium">Vehicle Type</th>
+                  <th className="pb-2 font-medium">Compliance</th>
+                  <th className="pb-2 font-medium">Status</th>
+                  <th className="pb-2 font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="py-6 text-center text-slate-400">
+                      No allowlisted vehicles
+                    </td>
+                  </tr>
+                )}
+                {filtered.map((v) => (
+                  <tr key={v.plate_number} className="border-t border-slate-200">
+                    <td className="py-2.5 font-mono font-semibold text-slate-900">{v.plate_number}</td>
+                    <td className="py-2.5 text-slate-600">{v.owner_name || '—'}</td>
+                    <td className="py-2.5 text-slate-500">
+                      <div className="flex items-center gap-1.5">
+                        {v.employee_id != null && (
+                          <Link2 className="h-3.5 w-3.5 text-blue-500" aria-label="Linked to Employee Master" />
+                        )}
+                        {v.owner_employee_id || '—'}
+                      </div>
+                    </td>
+                    <td className="py-2.5 text-slate-500">{v.vehicle_type || '—'}</td>
+                    <td className="py-2.5">
+                      <ComplianceCell vehicle={v} />
+                    </td>
+                    <td className="py-2.5">
+                      {v.is_active ? (
+                        <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                          Active
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                          Inactive
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-2.5">
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setViewingVehicle(v)}
+                          className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-blue-600"
+                          title="View all details"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingVehicle(v)}
+                          className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                          title="Edit details"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setToggleTarget(v)}
+                          className={`rounded-md p-1.5 hover:bg-slate-100 ${
+                            v.is_active ? 'text-amber-600 hover:text-amber-700' : 'text-emerald-600 hover:text-emerald-700'
+                          }`}
+                          title={v.is_active ? 'Deactivate' : 'Activate'}
+                        >
+                          <Power className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setBlacklistTarget(v)}
+                          className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-red-700"
+                          title="Move to blacklist"
+                        >
+                          <Ban className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Panel>
+
+      {showAddModal && (
+        <AddVehicleModal
+          employees={employees}
+          vehicleTypes={vehicleTypes}
+          onClose={() => setShowAddModal(false)}
+          onSubmit={handleAddVehicle}
+        />
+      )}
+      {showBulkModal && (
+        <BulkUploadModal
+          onClose={() => {
+            setShowBulkModal(false);
+            refresh();
+          }}
+          onUpload={bulkUploadAuthorizedVehicles}
+        />
+      )}
+      {viewingVehicle && (
+        <VehicleInfoModal vehicle={viewingVehicle} onClose={() => setViewingVehicle(null)} />
+      )}
+      {editingVehicle && (
+        <VehicleDetailsModal
+          vehicle={editingVehicle}
+          vehicleTypes={vehicleTypes}
+          employees={employees}
+          onClose={() => setEditingVehicle(null)}
+          onSubmit={handleSaveDetails}
+        />
+      )}
+      {toggleTarget && (
+        <ConfirmDialog
+          title={toggleTarget.is_active ? 'Deactivate Vehicle' : 'Activate Vehicle'}
+          message={
+            toggleTarget.is_active
+              ? `Deactivate ${toggleTarget.plate_number}? It stops being treated as authorized until reactivated.`
+              : `Activate ${toggleTarget.plate_number}? It will be treated as authorized again.`
+          }
+          confirmLabel={toggleTarget.is_active ? 'Deactivate' : 'Activate'}
+          danger={toggleTarget.is_active}
+          onConfirm={handleToggleActive}
+          onClose={() => setToggleTarget(null)}
+        />
+      )}
+      {blacklistTarget && (
+        <BlacklistReasonModal
+          plateNumber={blacklistTarget.plate_number}
+          onClose={() => setBlacklistTarget(null)}
+          onSubmit={handleBlacklist}
+        />
+      )}
+    </div>
+  );
+}
+
+function BlacklistTab({ employees, vehicleTypes }: TabProps) {
+  const [vehicles, setVehicles] = useState<AuthorizedVehicle[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const [editingVehicle, setEditingVehicle] = useState<AuthorizedVehicle | null>(null);
+  const [viewingVehicle, setViewingVehicle] = useState<AuthorizedVehicle | null>(null);
+  const [restoreTarget, setRestoreTarget] = useState<AuthorizedVehicle | null>(null);
+
+  const refresh = useCallback(async () => {
+    try {
+      const res = await getAuthorizedVehicles();
+      setVehicles(res.filter((v) => v.list_type === 'blacklist'));
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load blacklist');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toUpperCase();
+    if (!q) return vehicles;
+    return vehicles.filter(
+      (v) => v.plate_number.toUpperCase().includes(q) || (v.owner_name ?? '').toUpperCase().includes(q),
+    );
+  }, [vehicles, query]);
+
+  const handleSaveDetails = async (payload: Parameters<typeof updateVehicleDetails>[1]) => {
+    if (!editingVehicle) return;
+    await updateVehicleDetails(editingVehicle.plate_number, payload);
+    setEditingVehicle(null);
+    await refresh();
+  };
+
+  const handleRestore = async () => {
+    if (!restoreTarget) return;
+    await switchListType(restoreTarget.plate_number, { list_type: 'whitelist' });
+    setRestoreTarget(null);
+    await refresh();
+  };
+
+  return (
+    <div className="space-y-4">
+      <Panel
+        title={`Blacklisted Vehicles (${filtered.length})`}
+        action={
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+            <input
+              className={`${inputClass} w-56 py-1 pl-7 text-xs`}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Plate, owner…"
+            />
+          </div>
+        }
+      >
+        {loading ? (
+          <SkeletonTable columns={6} rows={3} />
+        ) : error ? (
+          <p className="py-6 text-center text-sm text-red-600">{error}</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="text-xs text-slate-500">
+                  <th className="pb-2 font-medium">Number Plate</th>
+                  <th className="pb-2 font-medium">Owner</th>
+                  <th className="pb-2 font-medium">Reason</th>
+                  <th className="pb-2 font-medium">Compliance</th>
+                  <th className="pb-2 font-medium">Blacklisted</th>
+                  <th className="pb-2 font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="py-6 text-center text-slate-400">
+                      No blacklisted vehicles
+                    </td>
+                  </tr>
+                )}
+                {filtered.map((v) => (
+                  <tr key={v.plate_number} className="border-t border-slate-200">
+                    <td className="py-2.5 font-mono font-semibold text-slate-900">{v.plate_number}</td>
+                    <td className="py-2.5 text-slate-600">{v.owner_name || '—'}</td>
+                    <td className="py-2.5 text-slate-600">
+                      {v.blacklist_reason || <span className="text-slate-400">No reason recorded</span>}
+                    </td>
+                    <td className="py-2.5">
+                      <ComplianceCell vehicle={v} />
+                    </td>
+                    <td className="py-2.5 text-slate-500">{formatDateTime(v.deactivated_at ?? v.added_at)}</td>
+                    <td className="py-2.5">
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setViewingVehicle(v)}
+                          className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-blue-600"
+                          title="View all details"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingVehicle(v)}
+                          className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                          title="Edit details"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setRestoreTarget(v)}
+                          className="flex items-center gap-1.5 rounded-md border border-slate-300 px-2.5 py-1 text-xs text-slate-600 hover:bg-slate-50"
+                          title="Restore to allowlist"
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" />
+                          Restore
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Panel>
+
+      {viewingVehicle && (
+        <VehicleInfoModal vehicle={viewingVehicle} onClose={() => setViewingVehicle(null)} />
+      )}
+      {editingVehicle && (
+        <VehicleDetailsModal
+          vehicle={editingVehicle}
+          vehicleTypes={vehicleTypes}
+          employees={employees}
+          onClose={() => setEditingVehicle(null)}
+          onSubmit={handleSaveDetails}
+        />
+      )}
+      {restoreTarget && (
+        <ConfirmDialog
+          title="Restore Vehicle"
+          message={`Restore ${restoreTarget.plate_number} to the allowlist? It will be allowed entry again.`}
+          confirmLabel="Restore"
+          onConfirm={handleRestore}
+          onClose={() => setRestoreTarget(null)}
+        />
+      )}
+    </div>
+  );
+}
