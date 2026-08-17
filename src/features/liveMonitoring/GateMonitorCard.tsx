@@ -57,23 +57,24 @@ export default function GateMonitorCard({
   const online = gate.enabled && camHealth?.status === 'ok';
 
   const vehicleByPlate = new Map(authorizedVehicles.map((v) => [v.plate_number, v]));
-  const isFlagged = (r: ActivityRecord) =>
-    r.eventType === 'unauthorized' || vehicleByPlate.get(r.plateNumber)?.list_type === 'blacklist';
+  const isBlacklisted = (r: ActivityRecord) => vehicleByPlate.get(r.plateNumber)?.list_type === 'blacklist';
+  // Excluded from the table entirely: unauthorized attempts never show up
+  // here at all (not even as a popup — just not surfaced on this page),
+  // and blacklisted vehicles are popped up instead (below) rather than
+  // left sitting in this list.
+  const isFlagged = (r: ActivityRecord) => r.eventType === 'unauthorized' || isBlacklisted(r);
 
   const allRecordsForGate = buildActivityRecords(activeVehicles, history, unauthorizedAttempts).filter(
     (r) => r.camId === gate.camera_id,
   );
 
-  // Table only ever shows authorized traffic — unauthorized attempts and
-  // blacklisted vehicles are surfaced as a brief popup instead (below),
-  // not left sitting in this list.
   const records = allRecordsForGate.filter((r) => !isFlagged(r)).slice(0, RECENT_COUNT);
 
   const [toasts, setToasts] = useState<{ id: string; record: ActivityRecord }[]>([]);
   const seenFlagged = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    const flagged = allRecordsForGate.filter(isFlagged);
+    const flagged = allRecordsForGate.filter(isBlacklisted);
     const fresh = flagged.filter((r) => !seenFlagged.current.has(r.key));
     if (fresh.length === 0) return;
 
@@ -159,7 +160,7 @@ export default function GateMonitorCard({
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold text-red-800">{t.record.plateNumber}</p>
                 <p className="truncate text-xs text-red-600">
-                  {t.record.eventType === 'unauthorized' ? 'Unauthorized attempt' : 'Blacklisted vehicle'}
+                  Blacklisted vehicle
                 </p>
               </div>
             </div>
