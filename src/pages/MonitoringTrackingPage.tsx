@@ -5,6 +5,7 @@ import Panel from '../components/ui/Panel';
 import { inputClass } from '../components/ui/FormField';
 import Select from '../components/ui/Select';
 import ImageLightbox from '../components/ui/ImageLightbox';
+import ExportControls from '../components/ui/ExportControls';
 import ActivityDetailModal from '../features/liveMonitoring/ActivityDetailModal';
 import {
   buildActivityRecords,
@@ -18,6 +19,20 @@ import { useDashboardData } from '../features/dashboard/useDashboardData';
 import { SkeletonTable } from '../components/ui/Skeleton';
 import { assetUrl } from '../services/api';
 import { formatDateTime, formatElapsed } from '../utils/format';
+import type { ExportKind } from '../services/exportsService';
+
+// No single backend export covers this page's merged entry+exit+
+// unauthorized timeline — map the current Event filter to whichever
+// export kind actually corresponds to what's on screen. "entry" here
+// means "currently inside" (buildActivityRecords only ever builds entry-
+// type rows from activeVehicles, never from history), matching
+// activeVehicles exactly. Falls back to history (completed visits) when
+// no event filter is set, as the closest single "all activity" export.
+function exportKindForEventFilter(eventFilter: ActivityEventType | ''): ExportKind {
+  if (eventFilter === 'entry') return 'activeVehicles';
+  if (eventFilter === 'unauthorized') return 'unauthorizedAttempts';
+  return 'history';
+}
 
 const PAGE_SIZE = 20;
 
@@ -153,6 +168,15 @@ export default function MonitoringTrackingPage() {
                 onChange={(e) => {
                   setEndDate(e.target.value);
                   resetPage();
+                }}
+              />
+              <ExportControls
+                kind={exportKindForEventFilter(eventFilter)}
+                fallback="vehicle-tracking.csv"
+                params={{
+                  plate: query.trim() || undefined,
+                  start_date: startDate || undefined,
+                  end_date: endDate || undefined,
                 }}
               />
             </div>
