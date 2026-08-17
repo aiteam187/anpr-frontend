@@ -95,7 +95,7 @@ export default function MonitoringTrackingPage() {
               <div className="relative">
                 <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                 <input
-                  className={`${inputClass} w-40 py-1 pl-7 text-xs`}
+                  className={`${inputClass} w-56 py-1 pl-7 text-xs`}
                   value={query}
                   onChange={(e) => {
                     setQuery(e.target.value);
