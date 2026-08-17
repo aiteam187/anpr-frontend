@@ -10,26 +10,36 @@ interface TypeSlice {
   glow: string;
 }
 
-const TYPE_META: Record<string, { label: string; color: string; glow: string }> = {
-  bike: { label: '2-Wheeler (Bike)', color: '#2563eb', glow: '#60a5fa' },
-  car: { label: '4-Wheeler (Car)', color: '#10b981', glow: '#6ee7b7' },
-  auto: { label: '3-Wheeler (Auto)', color: '#f59e0b', glow: '#fcd34d' },
-  truck: { label: 'Truck', color: '#7c3aed', glow: '#c4b5fd' },
-  bus: { label: 'Bus', color: '#0891b2', glow: '#67e8f9' },
-  other: { label: 'Other', color: '#e11d48', glow: '#fda4af' },
-};
+// vehicle_type is admin-configurable via the Vehicle Type Master
+// (GET/POST /admin/vehicle-types) — a free-form list, not a fixed enum —
+// so this groups by whatever string is actually stored (e.g. "2 WHEELER",
+// "4 WHEELER") instead of a hardcoded key match, which previously expected
+// values like "bike"/"car" that the app never actually saves anywhere,
+// silently bucketing every single vehicle into "Other".
+const PALETTE = [
+  { color: '#2563eb', glow: '#60a5fa' },
+  { color: '#10b981', glow: '#6ee7b7' },
+  { color: '#f59e0b', glow: '#fcd34d' },
+  { color: '#7c3aed', glow: '#c4b5fd' },
+  { color: '#0891b2', glow: '#67e8f9' },
+  { color: '#e11d48', glow: '#fda4af' },
+];
 
 function buildSlices(vehicles: AuthorizedVehicle[]): TypeSlice[] {
   const counts = new Map<string, number>();
   vehicles.forEach((v) => {
-    const key = v.vehicle_type && TYPE_META[v.vehicle_type] ? v.vehicle_type : 'other';
-    counts.set(key, (counts.get(key) ?? 0) + 1);
+    const label = v.vehicle_type?.trim() || 'Not Specified';
+    counts.set(label, (counts.get(label) ?? 0) + 1);
   });
 
-  return Object.keys(TYPE_META)
-    .map((key) => ({ key, ...TYPE_META[key], count: counts.get(key) ?? 0 }))
-    .filter((s) => s.count > 0)
-    .sort((a, b) => b.count - a.count);
+  return Array.from(counts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .map(([label, count], i) => ({
+      key: label,
+      label,
+      count,
+      ...PALETTE[i % PALETTE.length],
+    }));
 }
 
 interface RegisteredFleetChartProps {
