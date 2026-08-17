@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import Modal from '../../components/ui/Modal';
 import FormField, { inputClass } from '../../components/ui/FormField';
+import Select from '../../components/ui/Select';
 import type { GateConfig, GateConfigCreatePayload } from '../../types/gate';
 
 // Strips a scheme prefix and trailing slash so "http://192.168.10.214/"
@@ -109,14 +110,10 @@ export default function GateFormModal({ onClose, onSubmit }: GateFormModalProps)
           </FormField>
         </div>
         <FormField label="Direction">
-          <select
-            className={inputClass}
-            value={form.direction}
-            onChange={(e) => update('direction', e.target.value)}
-          >
+          <Select value={form.direction} onChange={(e) => update('direction', e.target.value)}>
             <option value="entry">Entry</option>
             <option value="exit">Exit</option>
-          </select>
+          </Select>
         </FormField>
         <label className="flex items-center gap-2 text-sm text-slate-700">
           <input

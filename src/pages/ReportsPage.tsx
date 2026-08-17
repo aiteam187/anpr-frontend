@@ -1,38 +1,45 @@
-import { useState } from 'react';
-import { Download, Eye } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Download } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import Panel from '../components/ui/Panel';
-import { inputClass } from '../components/ui/FormField';
-import ReportViewModal, { type ReportColumn } from '../features/reports/ReportViewModal';
+import Select from '../components/ui/Select';
+import CustomRangeDropdown from '../components/ui/CustomRangeDropdown';
+import ReportTable, { type ReportColumn } from '../features/reports/ReportTable';
 import { LIST_TYPE_LABELS, LIST_TYPE_STYLES } from '../features/vehicleSearch/listTypeBadge';
 import { downloadExport, type ExportFormat, type ExportKind } from '../services/exportsService';
-import {
-  getActiveVehicles,
-  getHistory,
-  getUnauthorizedAttempts,
-} from '../services/dashboardService';
+import { getActiveVehicles, getHistory } from '../services/dashboardService';
 import { getAuthorizedVehicles } from '../services/authorizedVehiclesService';
-import { formatConfidence, formatDateTime, formatElapsed } from '../utils/format';
-import { formatUnauthorizedReason } from '../features/liveMonitoring/unauthorizedReason';
-import type { ActiveVehicle, HistoryRecord, UnauthorizedAttempt } from '../types/detection';
+import { getGates } from '../services/gatesService';
+import { formatDateTime, formatElapsed } from '../utils/format';
+import { computeRangeMs, type RangeSelection } from '../utils/reportDateRange';
+import type { ActiveVehicle, HistoryRecord } from '../types/detection';
 import type { AuthorizedVehicle } from '../types/authorizedVehicle';
+import type { GateConfig } from '../types/gate';
 
-const ACTIVE_VEHICLES_COLUMNS: ReportColumn<ActiveVehicle>[] = [
-  { header: 'Number Plate', render: (v) => <span className="font-mono font-semibold text-slate-900">{v.plate_number}</span> },
-  { header: 'Entry Time', render: (v) => formatDateTime(v.entry_time) },
-  { header: 'Elapsed', render: (v) => formatElapsed(v.elapsed_seconds) },
-  {
-    header: 'Overstayed',
-    render: (v) =>
-      v.is_overstayed ? (
-        <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">Yes</span>
-      ) : (
-        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">No</span>
-      ),
-  },
-  { header: 'Confidence', render: (v) => formatConfidence(v.confidence) },
-  { header: 'Camera', render: (v) => v.cam_id },
-];
+const getBlacklistVehicles = () =>
+  getAuthorizedVehicles().then((list) => list.filter((v) => v.list_type === 'blacklist'));
+const getWhitelistVehicles = () =>
+  getAuthorizedVehicles().then((list) => list.filter((v) => v.list_type === 'whitelist'));
+const getVisitorVehicles = () =>
+  getAuthorizedVehicles().then((list) => list.filter((v) => v.list_type === 'visitor'));
+
+function buildActiveVehiclesColumns(gateNameByCamId: Map<string, string>): ReportColumn<ActiveVehicle>[] {
+  return [
+    { header: 'Number Plate', render: (v) => <span className="font-mono font-semibold text-slate-900">{v.plate_number}</span> },
+    { header: 'Entry Time', render: (v) => formatDateTime(v.entry_time) },
+    { header: 'Elapsed', render: (v) => formatElapsed(v.elapsed_seconds) },
+    {
+      header: 'Overstayed',
+      render: (v) =>
+        v.is_overstayed ? (
+          <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">Yes</span>
+        ) : (
+          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">No</span>
+        ),
+    },
+    { header: 'Camera', render: (v) => gateNameByCamId.get(v.cam_id) ?? v.cam_id },
+  ];
+}
 
 const HISTORY_COLUMNS: ReportColumn<HistoryRecord>[] = [
   { header: 'Number Plate', render: (v) => <span className="font-mono font-semibold text-slate-900">{v.plate_number}</span> },
@@ -71,176 +78,286 @@ const AUTHORIZED_VEHICLES_COLUMNS: ReportColumn<AuthorizedVehicle>[] = [
   { header: 'Added', render: (v) => formatDateTime(v.added_at) },
 ];
 
-const UNAUTHORIZED_ATTEMPTS_COLUMNS: ReportColumn<UnauthorizedAttempt>[] = [
-  { header: 'Number Plate', render: (v) => <span className="font-mono font-semibold text-slate-900">{v.plate_number}</span> },
-  { header: 'Timestamp', render: (v) => formatDateTime(v.timestamp) },
-  { header: 'Reason', render: (v) => formatUnauthorizedReason(v.reason) },
-  { header: 'Confidence', render: (v) => formatConfidence(v.confidence) },
-  { header: 'Camera', render: (v) => v.cam_id },
-];
+type TabId = 'activeVehicles' | 'history' | 'blacklist' | 'whitelist' | 'visitor';
 
 interface ReportDef {
+  id: TabId;
   kind: ExportKind;
   label: string;
-  description: string;
   fallback: string;
 }
 
-const EXPORTS: ReportDef[] = [
-  {
-    kind: 'activeVehicles',
-    label: 'Active Vehicles',
-    description: 'Vehicles currently inside the premises.',
-    fallback: 'active_vehicles.csv',
-  },
-  {
-    kind: 'history',
-    label: 'Entry/Exit History',
-    description: 'Completed entry and exit records with dwell time.',
-    fallback: 'vehicle_history.csv',
-  },
-  {
-    kind: 'authorizedVehicles',
-    label: 'Authorized Vehicles',
-    description: 'The current whitelist, including inactive entries.',
-    fallback: 'authorized_vehicles.csv',
-  },
-  {
-    kind: 'unauthorizedAttempts',
-    label: 'Unauthorized Attempts',
-    description: 'Denied entry attempts for plates not on the whitelist.',
-    fallback: 'unauthorized_attempts.csv',
-  },
+const TABS: ReportDef[] = [
+  { id: 'activeVehicles', kind: 'activeVehicles', label: 'Active Vehicles', fallback: 'active_vehicles.csv' },
+  { id: 'history', kind: 'history', label: 'Entry/Exit History', fallback: 'vehicle_history.csv' },
+  { id: 'whitelist', kind: 'authorizedVehicles', label: 'Whitelist', fallback: 'whitelist.csv' },
+  { id: 'blacklist', kind: 'authorizedVehicles', label: 'Blacklist', fallback: 'blacklist.csv' },
+  { id: 'visitor', kind: 'authorizedVehicles', label: 'Visitor', fallback: 'visitors.csv' },
 ];
 
 const FORMAT_OPTIONS: { value: ExportFormat; label: string }[] = [
-  { value: 'csv', label: 'CSV' },
   { value: 'xlsx', label: 'Excel' },
   { value: 'pdf', label: 'PDF' },
 ];
 
 export default function ReportsPage() {
-  const [downloading, setDownloading] = useState<ExportKind | null>(null);
+  const [tab, setTab] = useState<TabId>('activeVehicles');
+  const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [viewing, setViewing] = useState<ExportKind | null>(null);
-  const [format, setFormat] = useState<ExportFormat>('csv');
+  const [format, setFormat] = useState<ExportFormat>('xlsx');
+  const [gates, setGates] = useState<GateConfig[]>([]);
+  const [gateFilter, setGateFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'' | 'active' | 'inactive'>('');
+  const [rangePreset, setRangePreset] = useState<RangeSelection>('all');
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
 
-  const handleDownload = async (kind: ExportKind, fallback: string) => {
-    setDownloading(kind);
+  useEffect(() => {
+    getGates()
+      .then(setGates)
+      .catch(() => {});
+  }, []);
+
+  // Different tabs have different filterable fields, so filter state doesn't carry over meaningfully across a tab switch.
+  useEffect(() => {
+    setGateFilter('');
+    setStatusFilter('');
+    setRangePreset('all');
+    setCustomFrom('');
+    setCustomTo('');
+  }, [tab]);
+
+  const gateNameByCamId = useMemo(
+    () => new Map(gates.map((g) => [g.camera_id, g.gate_name])),
+    [gates],
+  );
+  const activeVehiclesColumns = useMemo(
+    () => buildActiveVehiclesColumns(gateNameByCamId),
+    [gateNameByCamId],
+  );
+
+  const dateRangeMs = useMemo(
+    () => computeRangeMs(rangePreset, customFrom, customTo),
+    [rangePreset, customFrom, customTo],
+  );
+
+  const activeVehiclesFilter = useMemo(
+    () => (v: ActiveVehicle) => {
+      if (gateFilter && v.cam_id !== gateFilter) return false;
+      const t = new Date(v.entry_time).getTime();
+      if (dateRangeMs.start !== null && t < dateRangeMs.start) return false;
+      if (dateRangeMs.end !== null && t > dateRangeMs.end) return false;
+      return true;
+    },
+    [gateFilter, dateRangeMs],
+  );
+
+  const historyFilter = useMemo(
+    () => (v: HistoryRecord) => {
+      if (gateFilter && v.entry_cam_id !== gateFilter && v.exit_cam_id !== gateFilter) return false;
+      const t = new Date(v.entry_time).getTime();
+      if (dateRangeMs.start !== null && t < dateRangeMs.start) return false;
+      if (dateRangeMs.end !== null && t > dateRangeMs.end) return false;
+      return true;
+    },
+    [gateFilter, dateRangeMs],
+  );
+
+  const authorizedVehiclesFilter = useMemo(
+    () => (v: AuthorizedVehicle) => {
+      if (statusFilter === 'active' && !v.is_active) return false;
+      if (statusFilter === 'inactive' && v.is_active) return false;
+      const t = new Date(v.added_at).getTime();
+      if (dateRangeMs.start !== null && t < dateRangeMs.start) return false;
+      if (dateRangeMs.end !== null && t > dateRangeMs.end) return false;
+      return true;
+    },
+    [statusFilter, dateRangeMs],
+  );
+
+  const activeTab = TABS.find((t) => t.id === tab)!;
+  const showGateFilter = tab === 'activeVehicles' || tab === 'history';
+  const showStatusFilter = tab === 'whitelist' || tab === 'blacklist' || tab === 'visitor';
+  const filtersActive = Boolean(gateFilter || statusFilter || rangePreset !== 'all');
+
+  const clearFilters = () => {
+    setGateFilter('');
+    setStatusFilter('');
+    setRangePreset('all');
+    setCustomFrom('');
+    setCustomTo('');
+  };
+
+  const filterControls = (
+    <>
+      <CustomRangeDropdown
+        preset={rangePreset}
+        customFrom={customFrom}
+        customTo={customTo}
+        onPresetChange={setRangePreset}
+        onCustomFromChange={setCustomFrom}
+        onCustomToChange={setCustomTo}
+      />
+      {showGateFilter && (
+        <Select
+          value={gateFilter}
+          onChange={(e) => setGateFilter(e.target.value)}
+          fullWidth={false}
+          className="w-40"
+        >
+          <option value="">All Gates</option>
+          {gates
+            .filter((g) => g.enabled)
+            .map((g) => (
+              <option key={g.camera_id} value={g.camera_id}>
+                {g.gate_name} ({g.direction})
+              </option>
+            ))}
+        </Select>
+      )}
+      {showStatusFilter && (
+        <Select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as '' | 'active' | 'inactive')}
+          fullWidth={false}
+          className="w-36"
+        >
+          <option value="">All Status</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </Select>
+      )}
+      {filtersActive && (
+        <button
+          type="button"
+          onClick={clearFilters}
+          className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
+        >
+          Clear
+        </button>
+      )}
+    </>
+  );
+
+  const handleDownload = async () => {
+    setDownloading(true);
     setError(null);
     try {
-      await downloadExport(kind, fallback, format);
+      await downloadExport(activeTab.kind, activeTab.fallback, format);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Download failed');
     } finally {
-      setDownloading(null);
+      setDownloading(false);
     }
   };
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Reports" description="View report data in the browser, or export it" />
+      <PageHeader title="Reports" description="Browse report data, or export it" />
+
+      <div className="flex gap-1 border-b border-slate-200">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => setTab(t.id)}
+            className={`px-3 py-2 text-sm font-medium transition-colors ${
+              tab === t.id
+                ? 'border-b-2 border-blue-600 text-blue-600'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
 
       <Panel
-        title="Available Reports"
+        title={activeTab.label}
         action={
-          <label className="flex items-center gap-2 text-xs text-slate-500">
-            Export format
-            <select
-              className={`${inputClass} w-auto py-1`}
+          <div className="flex items-center gap-2">
+            <Select
               value={format}
               onChange={(e) => setFormat(e.target.value as ExportFormat)}
+              fullWidth={false}
+              className="h-9 shadow-sm focus:ring-2 focus:ring-blue-500/30"
             >
               {FORMAT_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
                 </option>
               ))}
-            </select>
-          </label>
+            </Select>
+            <button
+              type="button"
+              onClick={handleDownload}
+              disabled={downloading}
+              className="flex h-9 items-center gap-1.5 rounded-md bg-blue-600 px-3 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Download className="h-4 w-4" />
+              {downloading ? 'Downloading…' : `Export ${format.toUpperCase()}`}
+            </button>
+          </div>
         }
       >
         {error && <p className="mb-3 text-xs text-red-600">{error}</p>}
-        <ul className="divide-y divide-slate-200">
-          {EXPORTS.map((item) => (
-            <li
-              key={item.kind}
-              className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
-            >
-              <div>
-                <p className="text-sm font-medium text-slate-900">{item.label}</p>
-                <p className="text-xs text-slate-500">{item.description}</p>
-              </div>
-              <div className="flex shrink-0 items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setViewing(item.kind)}
-                  className="flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500"
-                >
-                  <Eye className="h-4 w-4" />
-                  View
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDownload(item.kind, item.fallback)}
-                  disabled={downloading === item.kind}
-                  className="flex items-center gap-1.5 rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50 disabled:opacity-60"
-                >
-                  <Download className="h-4 w-4" />
-                  {downloading === item.kind ? 'Downloading…' : `Export ${format.toUpperCase()}`}
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </Panel>
 
-      {viewing === 'activeVehicles' && (
-        <ReportViewModal
-          title="Active Vehicles"
-          fetcher={getActiveVehicles}
-          columns={ACTIVE_VEHICLES_COLUMNS}
-          rowKey={(v) => v.plate_number}
-          emptyMessage="No vehicles currently inside"
-          onClose={() => setViewing(null)}
-          getSearchText={(v) => `${v.plate_number} ${v.cam_id ?? ''}`}
-        />
-      )}
-      {viewing === 'history' && (
-        <ReportViewModal
-          title="Entry/Exit History"
-          fetcher={getHistory}
-          columns={HISTORY_COLUMNS}
-          rowKey={(v) => `${v.plate_number}-${v.entry_time}`}
-          emptyMessage="No history records yet"
-          onClose={() => setViewing(null)}
-          getSearchText={(v) => `${v.plate_number} ${v.entry_gate_name ?? ''} ${v.exit_gate_name ?? ''}`}
-        />
-      )}
-      {viewing === 'authorizedVehicles' && (
-        <ReportViewModal
-          title="Authorized Vehicles"
-          fetcher={() => getAuthorizedVehicles()}
-          columns={AUTHORIZED_VEHICLES_COLUMNS}
-          rowKey={(v) => v.plate_number}
-          emptyMessage="No authorized vehicles yet"
-          onClose={() => setViewing(null)}
-          getSearchText={(v) =>
-            `${v.plate_number} ${v.owner_name ?? ''} ${v.owner_employee_id ?? ''} ${v.list_type}`
-          }
-        />
-      )}
-      {viewing === 'unauthorizedAttempts' && (
-        <ReportViewModal
-          title="Unauthorized Attempts"
-          fetcher={getUnauthorizedAttempts}
-          columns={UNAUTHORIZED_ATTEMPTS_COLUMNS}
-          rowKey={(v) => `${v.plate_number}-${v.timestamp}`}
-          emptyMessage="No unauthorized attempts recorded"
-          onClose={() => setViewing(null)}
-          getSearchText={(v) => `${v.plate_number} ${v.reason ?? ''}`}
-        />
-      )}
+        {tab === 'activeVehicles' && (
+          <ReportTable
+            fetcher={getActiveVehicles}
+            columns={activeVehiclesColumns}
+            rowKey={(v) => v.plate_number}
+            emptyMessage="No vehicles currently inside"
+            getSearchText={(v) => `${v.plate_number} ${v.cam_id ?? ''}`}
+            filter={activeVehiclesFilter}
+            extraControls={filterControls}
+          />
+        )}
+        {tab === 'history' && (
+          <ReportTable
+            fetcher={getHistory}
+            columns={HISTORY_COLUMNS}
+            rowKey={(v) => `${v.plate_number}-${v.entry_time}`}
+            emptyMessage="No history records yet"
+            getSearchText={(v) => `${v.plate_number} ${v.entry_gate_name ?? ''} ${v.exit_gate_name ?? ''}`}
+            filter={historyFilter}
+            extraControls={filterControls}
+          />
+        )}
+        {tab === 'blacklist' && (
+          <ReportTable
+            fetcher={getBlacklistVehicles}
+            columns={AUTHORIZED_VEHICLES_COLUMNS}
+            rowKey={(v) => v.plate_number}
+            emptyMessage="No blacklisted vehicles"
+            getSearchText={(v) => `${v.plate_number} ${v.owner_name ?? ''} ${v.owner_employee_id ?? ''}`}
+            filter={authorizedVehiclesFilter}
+            extraControls={filterControls}
+          />
+        )}
+        {tab === 'whitelist' && (
+          <ReportTable
+            fetcher={getWhitelistVehicles}
+            columns={AUTHORIZED_VEHICLES_COLUMNS}
+            rowKey={(v) => v.plate_number}
+            emptyMessage="No whitelisted vehicles"
+            getSearchText={(v) => `${v.plate_number} ${v.owner_name ?? ''} ${v.owner_employee_id ?? ''}`}
+            filter={authorizedVehiclesFilter}
+            extraControls={filterControls}
+          />
+        )}
+        {tab === 'visitor' && (
+          <ReportTable
+            fetcher={getVisitorVehicles}
+            columns={AUTHORIZED_VEHICLES_COLUMNS}
+            rowKey={(v) => v.plate_number}
+            emptyMessage="No visitor vehicles"
+            getSearchText={(v) => `${v.plate_number} ${v.owner_name ?? ''} ${v.owner_employee_id ?? ''}`}
+            filter={authorizedVehiclesFilter}
+            extraControls={filterControls}
+          />
+        )}
+      </Panel>
     </div>
   );
 }

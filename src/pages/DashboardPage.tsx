@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AlertTriangle, Car, Clock3, Radio, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, Ban, Car, Clock3, DoorOpen, LogOut, Radio, ShieldCheck, Users } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import FadeIn from '../components/ui/FadeIn';
 import DateRangeFilter from '../components/ui/DateRangeFilter';
@@ -14,6 +14,7 @@ import WeeklyTrafficChart from '../features/dashboard/charts/WeeklyTrafficChart'
 import HourlyActivityChart from '../features/dashboard/charts/HourlyActivityChart';
 import AccessOutcomeDonut from '../features/dashboard/charts/AccessOutcomeDonut';
 import RegisteredFleetChart from '../features/dashboard/charts/RegisteredFleetChart';
+import ComplianceOverviewChart from '../features/dashboard/charts/ComplianceOverviewChart';
 import { useDashboardData } from '../features/dashboard/useDashboardData';
 import { getRangeForPreset, isWithinRange, type RangePreset } from '../utils/dateRange';
 import { getLast7DayCounts } from '../utils/chartData';
@@ -33,20 +34,26 @@ export default function DashboardPage() {
   const range = getRangeForPreset(preset, customDate);
 
   const overstayedCount = data.activeVehicles.filter((v) => v.is_overstayed).length;
-  const authorizedActiveCount = data.authorizedVehicles.filter((v) => v.is_active).length;
   const enabledGates = data.gates.filter((g) => g.enabled);
   const gatesOnlineCount = enabledGates.filter(
     (g) => data.health?.camera.cameras[g.camera_id]?.status === 'ok',
   ).length;
-  const unauthorizedInRange = data.unauthorizedAttempts.filter((a) =>
-    isWithinRange(a.timestamp, range),
+  const totalVehiclesCount = data.authorizedVehicles.length;
+  const whitelistCount = data.authorizedVehicles.filter(
+    (v) => v.list_type === 'whitelist' && v.is_active,
   ).length;
+  const blacklistCount = data.authorizedVehicles.filter(
+    (v) => v.list_type === 'blacklist' && v.is_active,
+  ).length;
+  const visitorsCount = data.authorizedVehicles.filter(
+    (v) => v.list_type === 'visitor' && v.is_active,
+  ).length;
+  const exitsInRange = data.history.filter((h) => isWithinRange(h.exit_time, range)).length;
 
   const entriesTrend = getLast7DayCounts([
     ...data.activeVehicles.map((v) => v.entry_time),
     ...data.history.map((h) => h.entry_time),
   ]);
-  const unauthorizedTrend = getLast7DayCounts(data.unauthorizedAttempts.map((a) => a.timestamp));
 
   return (
     <div className="space-y-4">
@@ -80,39 +87,59 @@ export default function DashboardPage() {
           )}
 
           <SectionLabel>Key Metrics</SectionLabel>
-          <FadeIn delay={80} className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <FadeIn delay={80} className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             <StatTile
               icon={Car}
+              label="Total Vehicles"
+              value={totalVehiclesCount}
+              sublabel="Registered"
+              to="/masters/vehicles"
+            />
+            <StatTile
+              icon={DoorOpen}
               label="Active Vehicles"
               value={data.activeVehicles.length}
-              sublabel="Live"
+              sublabel="Inside Gate"
               to="/monitoring/tracking"
               trend={entriesTrend}
             />
             <StatTile
-              icon={Clock3}
-              label="Overstayed"
-              value={overstayedCount}
-              sublabel="Live"
-              tone={overstayedCount > 0 ? 'danger' : 'default'}
+              icon={LogOut}
+              label="Exit Vehicles"
+              value={exitsInRange}
+              sublabel={range.label}
               to="/monitoring/tracking"
             />
             <StatTile
+              icon={Users}
+              label="Visitors"
+              value={visitorsCount}
+              sublabel="Live"
+              to="/masters/visitors"
+            />
+            <StatTile
               icon={ShieldCheck}
-              label="Authorized"
-              value={authorizedActiveCount}
+              label="Whitelist"
+              value={whitelistCount}
               sublabel="Live"
               tone="success"
               to="/masters/vehicles"
             />
             <StatTile
-              icon={ShieldAlert}
-              label="Unauthorized"
-              value={unauthorizedInRange}
-              sublabel={range.label}
-              tone={unauthorizedInRange > 0 ? 'danger' : 'default'}
+              icon={Ban}
+              label="Blacklist"
+              value={blacklistCount}
+              sublabel="Live"
+              tone={blacklistCount > 0 ? 'danger' : 'default'}
+              to="/masters/vehicles"
+            />
+            <StatTile
+              icon={Clock3}
+              label="Overstay"
+              value={overstayedCount}
+              sublabel="Live"
+              tone={overstayedCount > 0 ? 'danger' : 'default'}
               to="/monitoring/tracking"
-              trend={unauthorizedTrend}
             />
             <StatTile
               icon={Radio}
@@ -139,6 +166,7 @@ export default function DashboardPage() {
           <SectionLabel>Registered Fleet</SectionLabel>
           <FadeIn delay={320} className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <RegisteredFleetChart vehicles={data.authorizedVehicles} />
+            <ComplianceOverviewChart vehicles={data.authorizedVehicles} />
           </FadeIn>
 
           <SectionLabel>Traffic Trends</SectionLabel>

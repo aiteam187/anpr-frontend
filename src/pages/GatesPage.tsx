@@ -1,11 +1,14 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Plus } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Plus, Search } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import Panel from '../components/ui/Panel';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import GatesTable from '../features/gates/GatesTable';
 import GateFormModal, { EditGateModal } from '../features/gates/GateFormModal';
 import { SkeletonTable } from '../components/ui/Skeleton';
+import { inputClass } from '../components/ui/FormField';
+import Select from '../components/ui/Select';
+import ExportControls from '../components/ui/ExportControls';
 import { createGate, deleteGate, getGates, updateGate } from '../services/gatesService';
 import type { GateConfig, GateConfigCreatePayload } from '../types/gate';
 
@@ -29,6 +32,9 @@ export default function GatesPage() {
       relay_register?: number | null;
     };
   } | null>(null);
+  const [query, setQuery] = useState('');
+  const [enabledFilter, setEnabledFilter] = useState<'' | 'enabled' | 'disabled'>('');
+  const [directionFilter, setDirectionFilter] = useState('');
 
   const refresh = useCallback(async () => {
     try {
@@ -96,6 +102,21 @@ export default function GatesPage() {
     await refresh();
   };
 
+  const filtered = useMemo(() => {
+    const q = query.trim().toUpperCase();
+    return gates.filter((g) => {
+      if (enabledFilter === 'enabled' && !g.enabled) return false;
+      if (enabledFilter === 'disabled' && g.enabled) return false;
+      if (directionFilter && g.direction !== directionFilter) return false;
+      if (!q) return true;
+      return (
+        g.gate_name.toUpperCase().includes(q) ||
+        g.gate_id.toUpperCase().includes(q) ||
+        g.camera_id.toUpperCase().includes(q)
+      );
+    });
+  }, [gates, query, enabledFilter, directionFilter]);
+
   return (
     <div className="space-y-4">
       <PageHeader
@@ -113,14 +134,57 @@ export default function GatesPage() {
         }
       />
 
-      <Panel title="Gates">
+      <Panel
+        title={`Gates (${filtered.length})`}
+        action={
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+              <input
+                className={`${inputClass} w-56 py-1 pl-7 text-xs`}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Gate name, gate ID, camera ID…"
+              />
+            </div>
+            <Select
+              value={directionFilter}
+              onChange={(e) => setDirectionFilter(e.target.value)}
+              fullWidth={false}
+              className="w-32"
+            >
+              <option value="">All Directions</option>
+              <option value="entry">Entry</option>
+              <option value="exit">Exit</option>
+            </Select>
+            <Select
+              value={enabledFilter}
+              onChange={(e) => setEnabledFilter(e.target.value as '' | 'enabled' | 'disabled')}
+              fullWidth={false}
+              className="w-32"
+            >
+              <option value="">All Status</option>
+              <option value="enabled">Enabled</option>
+              <option value="disabled">Disabled</option>
+            </Select>
+            <ExportControls
+              kind="gates"
+              fallback="gates.csv"
+              params={{
+                direction: directionFilter || undefined,
+                enabled: enabledFilter ? String(enabledFilter === 'enabled') : undefined,
+              }}
+            />
+          </div>
+        }
+      >
         {loading ? (
           <SkeletonTable columns={7} rows={3} />
         ) : error ? (
           <p className="py-6 text-center text-sm text-red-600">{error}</p>
         ) : (
           <GatesTable
-            gates={gates}
+            gates={filtered}
             onEdit={setEditingGate}
             onToggleEnabled={setToggleTarget}
             onDelete={setDeleteTarget}

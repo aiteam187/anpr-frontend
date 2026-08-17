@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import Modal from '../../components/ui/Modal';
 import FormField, { inputClass } from '../../components/ui/FormField';
+import Select from '../../components/ui/Select';
 import { validateNotPastDate } from '../../utils/validation';
 import type { Employee, EmployeeCreatePayload, EmployeeUpdatePayload } from '../../types/masters';
 import type { SimpleMaster } from '../../types/masters';
@@ -89,32 +90,24 @@ export default function EmployeeFormModal({
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <FormField label="Department">
-            <select
-              className={inputClass}
-              value={departmentId}
-              onChange={(e) => setDepartmentId(e.target.value)}
-            >
+            <Select value={departmentId} onChange={(e) => setDepartmentId(e.target.value)}>
               <option value="">— None —</option>
               {departments.map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </FormField>
           <FormField label="Reporting Manager">
-            <select
-              className={inputClass}
-              value={reportingManagerId}
-              onChange={(e) => setReportingManagerId(e.target.value)}
-            >
+            <Select value={reportingManagerId} onChange={(e) => setReportingManagerId(e.target.value)}>
               <option value="">— None —</option>
               {reportingManagers.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </FormField>
         </div>
         <FormField label="Registered With Company On (optional)">

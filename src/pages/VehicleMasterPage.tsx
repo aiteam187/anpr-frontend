@@ -5,6 +5,8 @@ import Panel from '../components/ui/Panel';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { SkeletonTable } from '../components/ui/Skeleton';
 import { inputClass } from '../components/ui/FormField';
+import Select from '../components/ui/Select';
+import ExportControls from '../components/ui/ExportControls';
 import VehicleDetailsModal from '../features/whitelist/VehicleDetailsModal';
 import AddVehicleModal from '../features/whitelist/AddVehicleModal';
 import BulkUploadModal from '../features/whitelist/BulkUploadModal';
@@ -249,32 +251,39 @@ function VehiclesTab({ employees, vehicleTypes }: TabProps) {
 
       {actionError && <p className="text-sm text-red-600">{actionError}</p>}
 
-      <Panel title="Filters">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input
-              className={`${inputClass} pl-9`}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Number plate, owner, employee ID, phone…"
+      <Panel
+        title={`Vehicles (${filtered.length})`}
+        action={
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+              <input
+                className={`${inputClass} w-56 py-1 pl-7 text-xs`}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Plate, owner, employee ID, phone…"
+              />
+            </div>
+            <Select
+              value={listTypeFilter}
+              onChange={(e) => setListTypeFilter(e.target.value as ListType | '')}
+              fullWidth={false}
+              className="w-32"
+            >
+              {LIST_TYPE_FILTERS.map((f) => (
+                <option key={f.value} value={f.value}>
+                  {f.label}
+                </option>
+              ))}
+            </Select>
+            <ExportControls
+              kind="authorizedVehicles"
+              fallback="vehicles.csv"
+              params={{ list_type: listTypeFilter || undefined, plate: query.trim() || undefined }}
             />
           </div>
-          <select
-            className={inputClass}
-            value={listTypeFilter}
-            onChange={(e) => setListTypeFilter(e.target.value as ListType | '')}
-          >
-            {LIST_TYPE_FILTERS.map((f) => (
-              <option key={f.value} value={f.value}>
-                {f.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      </Panel>
-
-      <Panel title={`Vehicles (${filtered.length})`}>
+        }
+      >
         {loading ? (
           <SkeletonTable columns={8} rows={5} />
         ) : error ? (
@@ -563,13 +572,20 @@ function AllowlistTab({ employees, vehicleTypes }: TabProps) {
       <Panel
         title={`Allowlisted Vehicles (${filtered.length})`}
         action={
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-            <input
-              className={`${inputClass} w-56 py-1 pl-7 text-xs`}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Plate, owner, employee ID, phone…"
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+              <input
+                className={`${inputClass} w-56 py-1 pl-7 text-xs`}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Plate, owner, employee ID, phone…"
+              />
+            </div>
+            <ExportControls
+              kind="authorizedVehicles"
+              fallback="allowlist.csv"
+              params={{ list_type: 'whitelist', plate: query.trim() || undefined }}
             />
           </div>
         }
@@ -779,13 +795,20 @@ function BlacklistTab({ employees, vehicleTypes }: TabProps) {
       <Panel
         title={`Blacklisted Vehicles (${filtered.length})`}
         action={
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-            <input
-              className={`${inputClass} w-56 py-1 pl-7 text-xs`}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Plate, owner…"
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+              <input
+                className={`${inputClass} w-56 py-1 pl-7 text-xs`}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Plate, owner…"
+              />
+            </div>
+            <ExportControls
+              kind="authorizedVehicles"
+              fallback="blacklist.csv"
+              params={{ list_type: 'blacklist', plate: query.trim() || undefined }}
             />
           </div>
         }

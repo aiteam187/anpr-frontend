@@ -1,21 +1,30 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Plus } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Plus, Search } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import Panel from '../components/ui/Panel';
 import UsersTable from '../features/users/UsersTable';
 import { SkeletonTable } from '../components/ui/Skeleton';
+import { inputClass } from '../components/ui/FormField';
+import Select from '../components/ui/Select';
+import ExportControls from '../components/ui/ExportControls';
 import UserFormModal, { EditUserModal } from '../features/users/UserFormModal';
 import { createUser, getUsers, updateUser } from '../services/authService';
+import { getRoles } from '../services/rolesService';
 import { useAuth } from '../context/AuthContext';
 import type { UserAccount, UserCreatePayload, UserUpdatePayload } from '../types/auth';
+import type { Role } from '../types/roles';
 
 export default function UsersPage() {
   const { token, user: currentUser } = useAuth();
   const [users, setUsers] = useState<UserAccount[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingUser, setEditingUser] = useState<UserAccount | null>(null);
+  const [query, setQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'' | 'active' | 'inactive'>('');
 
   const refresh = useCallback(async () => {
     if (!token) return;
@@ -33,6 +42,23 @@ export default function UsersPage() {
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    getRoles()
+      .then(setRoles)
+      .catch(() => {});
+  }, []);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toUpperCase();
+    return users.filter((u) => {
+      if (roleFilter && u.role !== roleFilter) return false;
+      if (statusFilter === 'active' && !u.is_active) return false;
+      if (statusFilter === 'inactive' && u.is_active) return false;
+      if (!q) return true;
+      return u.username.toUpperCase().includes(q) || u.full_name.toUpperCase().includes(q);
+    });
+  }, [users, query, roleFilter, statusFilter]);
 
   const handleCreate = async (payload: UserCreatePayload) => {
     if (!token) return;
@@ -65,13 +91,55 @@ export default function UsersPage() {
         }
       />
 
-      <Panel title="Users">
+      <Panel
+        title={`Users (${filtered.length})`}
+        action={
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+              <input
+                className={`${inputClass} w-56 py-1 pl-7 text-xs`}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Username or full name…"
+              />
+            </div>
+            <Select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} fullWidth={false} className="w-32">
+              <option value="">All Roles</option>
+              {roles.map((r) => (
+                <option key={r.id} value={r.name} className="capitalize">
+                  {r.name}
+                </option>
+              ))}
+            </Select>
+            <Select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as '' | 'active' | 'inactive')}
+              fullWidth={false}
+              className="w-32"
+            >
+              <option value="">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </Select>
+            <ExportControls
+              kind="users"
+              fallback="users.csv"
+              params={{
+                role: roleFilter || undefined,
+                is_active: statusFilter ? String(statusFilter === 'active') : undefined,
+                search: query.trim() || undefined,
+              }}
+            />
+          </div>
+        }
+      >
         {loading ? (
           <SkeletonTable columns={6} rows={2} />
         ) : error ? (
           <p className="py-6 text-center text-sm text-red-600">{error}</p>
         ) : (
-          <UsersTable users={users} currentUserId={currentUser?.id} onEdit={setEditingUser} />
+          <UsersTable users={filtered} currentUserId={currentUser?.id} onEdit={setEditingUser} />
         )}
       </Panel>
 

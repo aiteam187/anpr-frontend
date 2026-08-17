@@ -1,4 +1,4 @@
-import { Camera, LogIn, LogOut, ShieldAlert } from 'lucide-react';
+import { Camera, LogIn, LogOut, Users } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import StatTile from '../features/dashboard/StatTile';
 import GateMonitorCard from '../features/liveMonitoring/GateMonitorCard';
@@ -39,9 +39,13 @@ export default function MonitoringLivePage() {
     data.activeVehicles.filter((v) => isToday(v.entry_time)).length +
     data.history.filter((h) => isToday(h.entry_time)).length;
   const exitsToday = data.history.filter((h) => isToday(h.exit_time)).length;
-  const unauthorizedToday = data.unauthorizedAttempts.filter((a) =>
-    isToday(a.timestamp),
-  ).length;
+  const visitorPlates = new Set(
+    data.authorizedVehicles.filter((v) => v.list_type === 'visitor').map((v) => v.plate_number),
+  );
+  const visitorsToday =
+    data.activeVehicles.filter((v) => visitorPlates.has(v.plate_number) && isToday(v.entry_time))
+      .length +
+    data.history.filter((h) => visitorPlates.has(h.plate_number) && isToday(h.entry_time)).length;
 
   return (
     <div className="space-y-4">
@@ -60,12 +64,7 @@ export default function MonitoringLivePage() {
             />
             <StatTile icon={LogIn} label="Entries Today" value={entriesToday} tone="success" />
             <StatTile icon={LogOut} label="Exits Today" value={exitsToday} />
-            <StatTile
-              icon={ShieldAlert}
-              label="Unauthorized Today"
-              value={unauthorizedToday}
-              tone={unauthorizedToday > 0 ? 'danger' : 'default'}
-            />
+            <StatTile icon={Users} label="Visitors Today" value={visitorsToday} />
           </div>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

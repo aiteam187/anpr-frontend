@@ -1,13 +1,20 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, ClipboardList, Filter, Search } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ClipboardList, Download, Filter, Search } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import Panel from '../components/ui/Panel';
 import FormField, { inputClass } from '../components/ui/FormField';
+import Select from '../components/ui/Select';
 import { SkeletonTable } from '../components/ui/Skeleton';
 import { categoryLabel, categoryStyle } from '../features/activityLog/categoryMeta';
 import { getActivityLog } from '../services/activityLogService';
+import { downloadExport, type ExportFormat } from '../services/exportsService';
 import { formatDateTime } from '../utils/format';
 import type { ActivityLogEntry } from '../types/activityLog';
+
+const FORMAT_OPTIONS: { value: ExportFormat; label: string }[] = [
+  { value: 'xlsx', label: 'Excel' },
+  { value: 'pdf', label: 'PDF' },
+];
 
 const PAGE_SIZE = 25;
 
@@ -65,6 +72,9 @@ export default function ActivityLogPage() {
   const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [format, setFormat] = useState<ExportFormat>('xlsx');
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -93,6 +103,23 @@ export default function ActivityLogPage() {
   }, [refresh]);
 
   const handleFilterChange = () => setOffset(0);
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    setDownloadError(null);
+    try {
+      await downloadExport('activityLog', 'activity_log.csv', format, {
+        category: category || undefined,
+        start_date: startDate ? `${startDate}T00:00:00` : undefined,
+        end_date: endDate ? `${endDate}T23:59:59` : undefined,
+        target: target.trim() || undefined,
+      });
+    } catch (err) {
+      setDownloadError(err instanceof Error ? err.message : 'Download failed');
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const page = Math.floor(offset / PAGE_SIZE) + 1;
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
@@ -124,8 +151,7 @@ export default function ActivityLogPage() {
             </div>
           </FormField>
           <FormField label="Category">
-            <select
-              className={inputClass}
+            <Select
               value={category}
               onChange={(e) => {
                 setCategory(e.target.value);
@@ -138,7 +164,7 @@ export default function ActivityLogPage() {
                   {categoryLabel(c)}
                 </option>
               ))}
-            </select>
+            </Select>
           </FormField>
           <FormField label="From">
             <input
@@ -187,7 +213,33 @@ export default function ActivityLogPage() {
             {totalCount}
           </span>
         }
+        action={
+          <div className="flex items-center gap-2">
+            <Select
+              value={format}
+              onChange={(e) => setFormat(e.target.value as ExportFormat)}
+              fullWidth={false}
+              className="h-9 shadow-sm focus:ring-2 focus:ring-blue-500/30"
+            >
+              {FORMAT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </Select>
+            <button
+              type="button"
+              onClick={handleDownload}
+              disabled={downloading}
+              className="flex h-9 items-center gap-1.5 rounded-md bg-blue-600 px-3 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Download className="h-4 w-4" />
+              {downloading ? 'Downloading…' : `Export ${format.toUpperCase()}`}
+            </button>
+          </div>
+        }
       >
+        {downloadError && <p className="mb-3 text-xs text-red-600">{downloadError}</p>}
         {loading ? (
           <SkeletonTable columns={6} rows={6} />
         ) : error ? (

@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Eye, Search } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import Panel from '../components/ui/Panel';
 import { inputClass } from '../components/ui/FormField';
+import Select from '../components/ui/Select';
 import ImageLightbox from '../components/ui/ImageLightbox';
 import ActivityDetailModal from '../features/liveMonitoring/ActivityDetailModal';
 import {
@@ -82,78 +83,81 @@ export default function MonitoringTrackingPage() {
         description="Every entry, exit, and unauthorized attempt in one timeline"
       />
 
-      <Panel title="Filters">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input
-              className={`${inputClass} pl-9`}
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                resetPage();
-              }}
-              placeholder="Search plate…"
-            />
-          </div>
-          <select
-            className={inputClass}
-            value={eventFilter}
-            onChange={(e) => {
-              setEventFilter(e.target.value as ActivityEventType | '');
-              resetPage();
-            }}
-          >
-            {EVENT_FILTERS.map((f) => (
-              <option key={f.value} value={f.value}>
-                {f.label}
-              </option>
-            ))}
-          </select>
-          <select
-            className={inputClass}
-            value={gateFilter}
-            onChange={(e) => {
-              setGateFilter(e.target.value);
-              resetPage();
-            }}
-          >
-            <option value="">All Gates</option>
-            {data.gates
-              .filter((g) => g.enabled)
-              .map((g) => (
-                <option key={g.camera_id} value={g.camera_id}>
-                  {g.gate_name} ({g.direction})
-                </option>
-              ))}
-          </select>
-          <input
-            type="date"
-            className={inputClass}
-            value={startDate}
-            onChange={(e) => {
-              setStartDate(e.target.value);
-              resetPage();
-            }}
-          />
-          <input
-            type="date"
-            className={inputClass}
-            value={endDate}
-            onChange={(e) => {
-              setEndDate(e.target.value);
-              resetPage();
-            }}
-          />
-        </div>
-      </Panel>
-
       {data.loading ? (
         <Panel title="Timeline">
           <SkeletonTable columns={7} rows={8} />
         </Panel>
       ) : (
-        <Panel title={`Timeline (${filtered.length})`}>
+        <Panel
+          title={`Timeline (${filtered.length})`}
+          action={
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                <input
+                  className={`${inputClass} w-40 py-1 pl-7 text-xs`}
+                  value={query}
+                  onChange={(e) => {
+                    setQuery(e.target.value);
+                    resetPage();
+                  }}
+                  placeholder="Search plate…"
+                />
+              </div>
+              <Select
+                value={eventFilter}
+                onChange={(e) => {
+                  setEventFilter(e.target.value as ActivityEventType | '');
+                  resetPage();
+                }}
+                fullWidth={false}
+                className="w-32"
+              >
+                {EVENT_FILTERS.map((f) => (
+                  <option key={f.value} value={f.value}>
+                    {f.label}
+                  </option>
+                ))}
+              </Select>
+              <Select
+                value={gateFilter}
+                onChange={(e) => {
+                  setGateFilter(e.target.value);
+                  resetPage();
+                }}
+                fullWidth={false}
+                className="w-36"
+              >
+                <option value="">All Gates</option>
+                {data.gates
+                  .filter((g) => g.enabled)
+                  .map((g) => (
+                    <option key={g.camera_id} value={g.camera_id}>
+                      {g.gate_name} ({g.direction})
+                    </option>
+                  ))}
+              </Select>
+              <input
+                type="date"
+                className={`${inputClass} w-32 py-1 text-xs`}
+                value={startDate}
+                onChange={(e) => {
+                  setStartDate(e.target.value);
+                  resetPage();
+                }}
+              />
+              <input
+                type="date"
+                className={`${inputClass} w-32 py-1 text-xs`}
+                value={endDate}
+                onChange={(e) => {
+                  setEndDate(e.target.value);
+                  resetPage();
+                }}
+              />
+            </div>
+          }
+        >
           <div className="max-h-[60vh] overflow-auto rounded-lg border border-slate-100">
             <table className="w-full border-collapse text-left text-sm">
               <thead className="sticky top-0 z-10 bg-slate-50">

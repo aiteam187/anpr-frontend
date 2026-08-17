@@ -12,3 +12,22 @@ export interface AlarmsResponse {
   warning_count: number;
   alarms: AlarmItem[];
 }
+
+/** A row from the persisted alarm_logs table (GET /alarms/history) — unlike AlarmItem, this shape is a real Pydantic-adjacent dict returned consistently by the backend. */
+export interface AlarmLogEntry {
+  id: number;
+  alarm_type: string;
+  severity: 'critical' | 'warning';
+  target: string;
+  message: string;
+  since: string | null;
+  started_at: string;
+  resolved_at: string | null;
+}
+
+export interface AlarmHistoryResponse {
+  total_count: number;
+  limit: number;
+  offset: number;
+  items: AlarmLogEntry[];
+}

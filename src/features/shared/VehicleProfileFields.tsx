@@ -1,4 +1,5 @@
 import FormField, { inputClass } from '../../components/ui/FormField';
+import Select from '../../components/ui/Select';
 
 export const VEHICLE_TYPES = ['2 WHEELER', '3 WHEELER', '4 WHEELER', 'OTHER'];
 const FUEL_TYPES = ['petrol', 'diesel', 'cng', 'electric', 'hybrid', 'other'];
@@ -131,32 +132,24 @@ export default function VehicleProfileFields({
         </p>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <FormField label="Vehicle Type">
-            <select
-              className={inputClass}
-              value={form.vehicle_type}
-              onChange={(e) => onChange('vehicle_type', e.target.value)}
-            >
+            <Select value={form.vehicle_type} onChange={(e) => onChange('vehicle_type', e.target.value)}>
               <option value="">—</option>
               {vehicleTypeOptions.map((t) => (
                 <option key={t} value={t}>
                   {t}
                 </option>
               ))}
-            </select>
+            </Select>
           </FormField>
           <FormField label="Fuel Type">
-            <select
-              className={inputClass}
-              value={form.fuel_type}
-              onChange={(e) => onChange('fuel_type', e.target.value)}
-            >
+            <Select value={form.fuel_type} onChange={(e) => onChange('fuel_type', e.target.value)}>
               <option value="">—</option>
               {FUEL_TYPES.map((t) => (
                 <option key={t} value={t}>
                   {t}
                 </option>
               ))}
-            </select>
+            </Select>
           </FormField>
           <FormField label="Company / Make">
             <input

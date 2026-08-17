@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { Car, ChevronDown, ChevronRight, X } from 'lucide-react';
 import { navItems, type NavItem } from './navItems';
+import Select from '../ui/Select';
 import { usePersistedState } from '../../hooks/usePersistedState';
 import { usePermissions } from '../../context/PermissionsContext';
 import anprLogo from '../../assets/anpr-logo.png';
@@ -196,9 +197,9 @@ export default function Sidebar({
             </button>
             {summaryOpen && (
               <>
-                <select className="mb-3 w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-700 focus:outline-none">
+                <Select className="mb-3 text-xs">
                   <option>All Gates</option>
-                </select>
+                </Select>
                 <ul className="space-y-2">
                   {summaryItems.map((s) => (
                     <li

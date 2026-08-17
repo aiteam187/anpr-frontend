@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import Modal from '../../components/ui/Modal';
 import FormField, { inputClass } from '../../components/ui/FormField';
+import Select from '../../components/ui/Select';
 import { validatePassword, validatePhone, validateRequired, validateUsername } from '../../utils/validation';
 import { getRoles } from '../../services/rolesService';
 import type { Role } from '../../types/roles';
@@ -96,13 +97,13 @@ export default function UserFormModal({ onClose, onSubmit }: UserFormModalProps)
           {errors.password && <p className="mt-1 text-xs text-red-600">{errors.password}</p>}
         </FormField>
         <FormField label="Role">
-          <select className={inputClass} value={role} onChange={(e) => setRole(e.target.value)}>
+          <Select value={role} onChange={(e) => setRole(e.target.value)}>
             {roles.map((r) => (
               <option key={r.id} value={r.name} className="capitalize">
                 {r.name}
               </option>
             ))}
-          </select>
+          </Select>
         </FormField>
         <FormField label="Phone Number (optional)">
           <input
@@ -193,7 +194,7 @@ export function EditUserModal({ user, onClose, onSubmit }: EditUserModalProps) {
           {errors.fullName && <p className="mt-1 text-xs text-red-600">{errors.fullName}</p>}
         </FormField>
         <FormField label="Role">
-          <select className={inputClass} value={role} onChange={(e) => setRole(e.target.value)}>
+          <Select value={role} onChange={(e) => setRole(e.target.value)}>
             {/* The user's current role is shown even if it's since been disabled/renamed away — otherwise the select would silently fall back to a blank value. */}
             {!roles.some((r) => r.name === role) && (
               <option value={role} className="capitalize">
@@ -205,7 +206,7 @@ export function EditUserModal({ user, onClose, onSubmit }: EditUserModalProps) {
                 {r.name}
               </option>
             ))}
-          </select>
+          </Select>
         </FormField>
         <FormField label="Phone Number">
           <input

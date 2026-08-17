@@ -1,8 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Plus } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Plus, Search } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import Panel from '../components/ui/Panel';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
+import { inputClass } from '../components/ui/FormField';
+import Select from '../components/ui/Select';
+import ExportControls from '../components/ui/ExportControls';
 import { SkeletonTable } from '../components/ui/Skeleton';
 import VisitorTable from '../features/visitors/VisitorTable';
 import AddVisitorModal, { type NewVisitorInput } from '../features/visitors/AddVisitorModal';
@@ -24,6 +27,8 @@ export default function VisitorsPage() {
   const [editingVisitor, setEditingVisitor] = useState<AuthorizedVehicle | null>(null);
   const [convertTarget, setConvertTarget] = useState<AuthorizedVehicle | null>(null);
   const [revokeTarget, setRevokeTarget] = useState<AuthorizedVehicle | null>(null);
+  const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'' | 'active' | 'inactive'>('');
 
   const refresh = useCallback(async () => {
     try {
@@ -83,6 +88,20 @@ export default function VisitorsPage() {
     await refresh();
   };
 
+  const filtered = useMemo(() => {
+    const q = query.trim().toUpperCase();
+    return visitors.filter((v) => {
+      if (statusFilter === 'active' && !v.is_active) return false;
+      if (statusFilter === 'inactive' && v.is_active) return false;
+      if (!q) return true;
+      return (
+        v.plate_number.toUpperCase().includes(q) ||
+        (v.owner_name ?? '').toUpperCase().includes(q) ||
+        (v.visiting_whom ?? '').toUpperCase().includes(q)
+      );
+    });
+  }, [visitors, query, statusFilter]);
+
   return (
     <div className="space-y-4">
       <PageHeader
@@ -100,14 +119,44 @@ export default function VisitorsPage() {
         }
       />
 
-      <Panel title="Visitors">
+      <Panel
+        title={`Visitors (${filtered.length})`}
+        action={
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+              <input
+                className={`${inputClass} w-56 py-1 pl-7 text-xs`}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Plate, owner, visiting whom…"
+              />
+            </div>
+            <Select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as '' | 'active' | 'inactive')}
+              fullWidth={false}
+              className="w-32"
+            >
+              <option value="">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </Select>
+            <ExportControls
+              kind="authorizedVehicles"
+              fallback="visitors.csv"
+              params={{ list_type: 'visitor', plate: query.trim() || undefined }}
+            />
+          </div>
+        }
+      >
         {loading ? (
           <SkeletonTable columns={8} rows={4} />
         ) : error ? (
           <p className="py-6 text-center text-sm text-red-600">{error}</p>
         ) : (
           <VisitorTable
-            visitors={visitors}
+            visitors={filtered}
             onEdit={setEditingVisitor}
             onConvertToPermanent={setConvertTarget}
             onRevoke={setRevokeTarget}

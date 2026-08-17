@@ -26,7 +26,7 @@ import type { AuthorizedVehicle } from '../../types/authorizedVehicle';
 import type { GateConfig } from '../../types/gate';
 import type { SystemHealth } from '../../types/health';
 
-const RECENT_COUNT = 5;
+const RECENT_COUNT = 2;
 
 interface GateMonitorCardProps {
   gate: GateConfig;

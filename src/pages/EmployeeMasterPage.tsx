@@ -1,9 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import Panel from '../components/ui/Panel';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { SkeletonTable } from '../components/ui/Skeleton';
+import { inputClass } from '../components/ui/FormField';
+import Select from '../components/ui/Select';
+import ExportControls from '../components/ui/ExportControls';
 import SimpleMasterPage from '../features/masters/SimpleMasterPage';
 import EmployeeFormModal from '../features/masters/EmployeeFormModal';
 import {
@@ -81,6 +84,9 @@ function EmployeesTab() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null);
+  const [query, setQuery] = useState('');
+  const [departmentFilter, setDepartmentFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'' | 'enabled' | 'disabled'>('');
 
   const refresh = useCallback(async () => {
     try {
@@ -129,6 +135,21 @@ function EmployeesTab() {
     await refresh();
   };
 
+  const filtered = useMemo(() => {
+    const q = query.trim().toUpperCase();
+    return employees.filter((e) => {
+      if (departmentFilter && String(e.department_id ?? '') !== departmentFilter) return false;
+      if (statusFilter === 'enabled' && !e.enabled) return false;
+      if (statusFilter === 'disabled' && e.enabled) return false;
+      if (!q) return true;
+      return (
+        e.employee_code.toUpperCase().includes(q) ||
+        e.name.toUpperCase().includes(q) ||
+        (e.department_name ?? '').toUpperCase().includes(q)
+      );
+    });
+  }, [employees, query, departmentFilter, statusFilter]);
+
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
@@ -142,7 +163,54 @@ function EmployeesTab() {
         </button>
       </div>
 
-      <Panel title="Employees">
+      <Panel
+        title={`Employees (${filtered.length})`}
+        action={
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+              <input
+                className={`${inputClass} w-56 py-1 pl-7 text-xs`}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Employee code, name, department…"
+              />
+            </div>
+            <Select
+              value={departmentFilter}
+              onChange={(e) => setDepartmentFilter(e.target.value)}
+              fullWidth={false}
+              className="w-40"
+            >
+              <option value="">All Departments</option>
+              {departments.map((d) => (
+                <option key={d.id} value={String(d.id)}>
+                  {d.name}
+                </option>
+              ))}
+            </Select>
+            <Select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as '' | 'enabled' | 'disabled')}
+              fullWidth={false}
+              className="w-32"
+            >
+              <option value="">All Status</option>
+              <option value="enabled">Enabled</option>
+              <option value="disabled">Disabled</option>
+            </Select>
+            <ExportControls
+              kind="employees"
+              fallback="employees.csv"
+              params={{
+                department_id: departmentFilter || undefined,
+                enabled: statusFilter ? String(statusFilter === 'enabled') : undefined,
+                search: query.trim() || undefined,
+              }}
+            />
+          </div>
+        }
+      >
         {loading ? (
           <SkeletonTable columns={6} rows={3} />
         ) : error ? (
@@ -162,14 +230,14 @@ function EmployeesTab() {
                 </tr>
               </thead>
               <tbody>
-                {employees.length === 0 && (
+                {filtered.length === 0 && (
                   <tr>
                     <td colSpan={7} className="py-6 text-center text-slate-400">
-                      No employees configured
+                      No employees found
                     </td>
                   </tr>
                 )}
-                {employees.map((employee) => (
+                {filtered.map((employee) => (
                   <tr key={employee.id} className="border-t border-slate-200">
                     <td className="py-2.5 font-medium text-slate-900">{employee.employee_code}</td>
                     <td className="py-2.5 text-slate-700">{employee.name}</td>
