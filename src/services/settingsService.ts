@@ -1,4 +1,4 @@
-import { apiGet, apiPut } from './api';
+import { apiGet, apiPost, apiPut } from './api';
 
 export function getMaxVehiclesPerEmployee() {
   return apiGet<{ max_vehicles: number | null }>('/settings/max-vehicles-per-employee');
@@ -21,6 +21,18 @@ export function updateImageCaptureMode(mode: 'full' | 'plate_only') {
 
 export function getCameraWebhookUrl() {
   return apiGet<{ url: string }>('/settings/camera-webhook-url');
+}
+
+export interface DbCredentials {
+  host: string;
+  port: string;
+  database: string;
+  username: string;
+  password: string;
+}
+
+export function revealDbCredentials(code: string) {
+  return apiPost<DbCredentials>('/settings/db-credentials', { code });
 }
 
 export function getEmployeeOverstayLimitHours() {

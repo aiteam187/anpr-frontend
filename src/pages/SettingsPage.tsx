@@ -4,6 +4,7 @@ import MaxVehiclesPerEmployeePanel from '../features/settings/MaxVehiclesPerEmpl
 import EmployeeOverstayLimitPanel from '../features/settings/EmployeeOverstayLimitPanel';
 import ImageCaptureModePanel from '../features/settings/ImageCaptureModePanel';
 import CameraWebhookUrlPanel from '../features/settings/CameraWebhookUrlPanel';
+import DbCredentialsPanel from '../features/settings/DbCredentialsPanel';
 
 export default function SettingsPage() {
   return (
@@ -12,6 +13,7 @@ export default function SettingsPage() {
 
       <NotificationsPanel />
       <CameraWebhookUrlPanel />
+      <DbCredentialsPanel />
       <ImageCaptureModePanel />
       <MaxVehiclesPerEmployeePanel />
       <EmployeeOverstayLimitPanel />
