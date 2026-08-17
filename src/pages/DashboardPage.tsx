@@ -14,6 +14,7 @@ import WeeklyTrafficChart from '../features/dashboard/charts/WeeklyTrafficChart'
 import HourlyActivityChart from '../features/dashboard/charts/HourlyActivityChart';
 import AccessOutcomeDonut from '../features/dashboard/charts/AccessOutcomeDonut';
 import RegisteredFleetChart from '../features/dashboard/charts/RegisteredFleetChart';
+import FleetRegistrationChart from '../features/dashboard/charts/FleetRegistrationChart';
 import ComplianceOverviewChart from '../features/dashboard/charts/ComplianceOverviewChart';
 import { useDashboardData } from '../features/dashboard/useDashboardData';
 import { getRangeForPreset, isWithinRange, type RangePreset } from '../utils/dateRange';
@@ -166,6 +167,11 @@ export default function DashboardPage() {
 
           <SectionLabel>Registered Fleet</SectionLabel>
           <FadeIn delay={320} className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <FleetRegistrationChart
+              vehicles={data.authorizedVehicles}
+              range={range}
+              className="lg:col-span-2"
+            />
             <RegisteredFleetChart vehicles={data.authorizedVehicles} />
             <ComplianceOverviewChart vehicles={data.authorizedVehicles} />
           </FadeIn>

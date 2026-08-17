@@ -1,4 +1,5 @@
 import type { ActiveVehicle, HistoryRecord, UnauthorizedAttempt } from '../types/detection';
+import type { AuthorizedVehicle } from '../types/authorizedVehicle';
 import { isWithinRange, type DateRange } from './dateRange';
 
 export interface DailyTraffic {
@@ -112,6 +113,39 @@ export function getLast7DayCounts(timestamps: (string | null | undefined)[]): nu
   });
 
   return days;
+}
+
+export interface DailyFleetRegistrations {
+  day: string;
+  whitelist: number;
+  blacklist: number;
+}
+
+export function getFleetRegistrationSeries(
+  vehicles: AuthorizedVehicle[],
+  range: DateRange,
+): DailyFleetRegistrations[] {
+  const buckets = new Map<string, DailyFleetRegistrations>();
+
+  const stepMs =
+    range.bucket === 'hour' ? 3600000 : range.bucket === 'week' ? 7 * 86400000 : 86400000;
+  for (let t = range.start.getTime(); t <= range.end.getTime(); t += stepMs) {
+    const d = new Date(t);
+    const key = bucketKey(d, range.bucket);
+    if (!buckets.has(key)) {
+      buckets.set(key, { day: bucketLabel(d, range.bucket), whitelist: 0, blacklist: 0 });
+    }
+  }
+
+  vehicles.forEach((v) => {
+    if (v.list_type !== 'whitelist' && v.list_type !== 'blacklist') return;
+    if (!isWithinRange(v.added_at, range)) return;
+    const key = bucketKey(new Date(v.added_at), range.bucket);
+    const b = buckets.get(key);
+    if (b) b[v.list_type]++;
+  });
+
+  return Array.from(buckets.values());
 }
 
 export interface OutcomeSlice {
