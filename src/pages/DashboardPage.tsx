@@ -152,7 +152,11 @@ export default function DashboardPage() {
 
           <SectionLabel>Live Operations</SectionLabel>
           <FadeIn delay={240} className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-            <ActiveVehiclesPanel vehicles={data.activeVehicles} gates={data.gates} />
+            <ActiveVehiclesPanel
+              vehicles={data.activeVehicles}
+              history={data.history}
+              gates={data.gates}
+            />
             <QuickLinksPanel />
           </FadeIn>
 

@@ -4,22 +4,33 @@ import { ChevronRight } from 'lucide-react';
 import Panel from '../../components/ui/Panel';
 import ImageLightbox from '../../components/ui/ImageLightbox';
 import { assetUrl } from '../../services/api';
-import { formatElapsed, formatTime } from '../../utils/format';
-import type { ActiveVehicle } from '../../types/detection';
+import { formatTime } from '../../utils/format';
+import { buildActivityRecords } from '../liveMonitoring/activityRecords';
+import type { ActiveVehicle, HistoryRecord } from '../../types/detection';
 import type { GateConfig } from '../../types/gate';
 
 interface ActiveVehiclesPanelProps {
   vehicles: ActiveVehicle[];
+  history: HistoryRecord[];
   gates: GateConfig[];
 }
 
-export default function ActiveVehiclesPanel({ vehicles, gates }: ActiveVehiclesPanelProps) {
+const RECENT_COUNT = 2;
+
+export default function ActiveVehiclesPanel({ vehicles, history, gates }: ActiveVehiclesPanelProps) {
   const [zoomedImage, setZoomedImage] = useState<{ src: string; alt: string } | null>(null);
   const gateByCameraId = useMemo(() => new Map(gates.map((g) => [g.camera_id, g])), [gates]);
 
+  // Passing [] for unauthorizedAttempts (buildActivityRecords' third arg) —
+  // this panel is only ever entry/exit ("In"/"Out"); unauthorized attempts
+  // belong to the Alerts panel instead, not here.
+  const records = buildActivityRecords(vehicles, history, [])
+    .filter((r) => r.eventType === 'entry' || r.eventType === 'exit')
+    .slice(0, RECENT_COUNT);
+
   return (
     <Panel
-      title="Active Vehicles"
+      title="Recent Activity"
       className="lg:col-span-2"
       action={
         <Link
@@ -36,57 +47,50 @@ export default function ActiveVehiclesPanel({ vehicles, gates }: ActiveVehiclesP
           <thead>
             <tr className="text-xs text-slate-500">
               <th className="pb-2 font-medium">Number Plate</th>
-              <th className="pb-2 font-medium">Entry Time</th>
-              <th className="pb-2 font-medium">Duration</th>
+              <th className="pb-2 font-medium">Time</th>
               <th className="pb-2 font-medium">Camera</th>
-              <th className="pb-2 font-medium">Status</th>
+              <th className="pb-2 font-medium">Type</th>
             </tr>
           </thead>
           <tbody>
-            {vehicles.length === 0 && (
+            {records.length === 0 && (
               <tr>
-                <td colSpan={5} className="py-6 text-center text-slate-400">
-                  No vehicles currently inside
+                <td colSpan={4} className="py-6 text-center text-slate-400">
+                  No recent activity
                 </td>
               </tr>
             )}
-            {vehicles.map((v) => {
-              const thumb = assetUrl(v.image_url);
-              const gate = gateByCameraId.get(v.cam_id) ?? null;
+            {records.map((r) => {
+              const thumb = assetUrl(r.imageUrl);
+              const gate = gateByCameraId.get(r.camId) ?? null;
+              const isIn = r.eventType === 'entry';
               return (
-                <tr key={`${v.plate_number}-${v.entry_time}`} className="border-t border-slate-200">
+                <tr key={r.key} className="border-t border-slate-200">
                   <td className="py-2.5">
                     <div className="flex items-center gap-2">
                       {thumb && (
                         <img
                           src={thumb}
-                          alt={v.plate_number}
-                          onClick={() => setZoomedImage({ src: thumb, alt: v.plate_number })}
+                          alt={r.plateNumber}
+                          onClick={() => setZoomedImage({ src: thumb, alt: r.plateNumber })}
                           className="h-8 w-12 cursor-pointer rounded object-cover"
                         />
                       )}
-                      <span className="font-medium text-slate-900">{v.plate_number}</span>
+                      <span className="font-medium text-slate-900">{r.plateNumber}</span>
                     </div>
                   </td>
-                  <td className="py-2.5 text-slate-500">{formatTime(v.entry_time)}</td>
-                  <td
-                    className={`py-2.5 font-medium ${
-                      v.is_overstayed ? 'text-red-600' : 'text-slate-600'
-                    }`}
-                  >
-                    {formatElapsed(v.elapsed_seconds)}
-                  </td>
+                  <td className="py-2.5 text-slate-500">{formatTime(r.time)}</td>
                   <td className="py-2.5 text-slate-500">
-                    {gate ? `${gate.gate_name} (${gate.direction})` : v.cam_id}
+                    {gate ? `${gate.gate_name} (${gate.direction})` : r.camId}
                   </td>
                   <td className="py-2.5">
-                    {v.is_overstayed ? (
-                      <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">
-                        Overstayed
+                    {isIn ? (
+                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                        In
                       </span>
                     ) : (
-                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
-                        Active
+                      <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+                        Out
                       </span>
                     )}
                   </td>
