@@ -34,8 +34,9 @@ export function formatRelativeTime(iso: string | null | undefined): string {
   const d = new Date(iso).getTime();
   if (Number.isNaN(d)) return '—';
   const diffSeconds = Math.floor((Date.now() - d) / 1000);
-  if (diffSeconds < 5) return 'just now';
-  if (diffSeconds < 60) return `${diffSeconds}s ago`;
+  // Deliberately no seconds-precision display — ticking "3s ago" -> "4s
+  // ago" every poll is noisy; anything under a minute just says "just now".
+  if (diffSeconds < 60) return 'just now';
   const minutes = Math.floor(diffSeconds / 60);
   if (minutes < 60) return `${minutes}m ago`;
   const hours = Math.floor(minutes / 60);
