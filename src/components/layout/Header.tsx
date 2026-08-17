@@ -19,9 +19,16 @@ const ALARM_POLL_MS = 3000;
 const DISMISSED_ALARMS_KEY = 'anpr_dismissed_alarms';
 
 /** Alarms have no persisted ID (the backend computes them live, nothing is
- * stored) — this is the closest thing to a stable identity across polls. */
+ * stored) — this is the closest thing to a stable identity across polls.
+ * Deliberately NOT alarmTitle(): several alarm types (overstay, camera
+ * silent) embed a live-updating duration right in their message text
+ * ("has overstayed (inside 4h 5s)"), which changes every poll — using
+ * that as part of the key made every "same" alarm look brand new each
+ * time, so a dismissed one reappeared within seconds. `type` is the
+ * backend's own stable category field for the same condition. */
 function alarmKey(alarm: AlarmItem): string {
-  return `${alarmTitle(alarm)}::${alarmTarget(alarm) ?? ''}`;
+  const type = typeof alarm.type === 'string' ? alarm.type : alarmTitle(alarm);
+  return `${type}::${alarmTarget(alarm) ?? ''}`;
 }
 
 function loadDismissed(): Set<string> {
