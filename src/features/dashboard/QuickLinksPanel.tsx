@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import {
   BarChart2,
+  BriefcaseBusiness,
   ClipboardList,
   FileText,
   ShieldCheck,
@@ -12,6 +13,7 @@ import Panel from '../../components/ui/Panel';
 const LINKS: { to: string; label: string; icon: LucideIcon }[] = [
   { to: '/masters/vehicles', label: 'Vehicle Master', icon: ShieldCheck },
   { to: '/masters/visitors', label: 'Visitor Master', icon: Users },
+  { to: '/masters/employees', label: 'Employee Master', icon: BriefcaseBusiness },
   { to: '/reports', label: 'Reports', icon: FileText },
   { to: '/analytics', label: 'Analytics', icon: BarChart2 },
   { to: '/audit-logs', label: 'Audit Logs', icon: ClipboardList },
