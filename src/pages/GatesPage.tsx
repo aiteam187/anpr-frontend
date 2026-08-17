@@ -10,7 +10,7 @@ import { inputClass } from '../components/ui/FormField';
 import Select from '../components/ui/Select';
 import ExportControls from '../components/ui/ExportControls';
 import { createGate, deleteGate, getGates, updateGate } from '../services/gatesService';
-import type { GateConfig, GateConfigCreatePayload } from '../types/gate';
+import type { GateConfig, GateConfigCreatePayload, GateConfigUpdatePayload } from '../types/gate';
 
 export default function GatesPage() {
   const [gates, setGates] = useState<GateConfig[]>([]);
@@ -23,14 +23,7 @@ export default function GatesPage() {
   const [pendingCreate, setPendingCreate] = useState<GateConfigCreatePayload | null>(null);
   const [pendingUpdate, setPendingUpdate] = useState<{
     gate: GateConfig;
-    updates: {
-      camera_id?: string | null;
-      camera_ip?: string | null;
-      stream_path?: string | null;
-      gate_name?: string | null;
-      enabled?: boolean | null;
-      relay_register?: number | null;
-    };
+    updates: GateConfigUpdatePayload;
   } | null>(null);
   const [query, setQuery] = useState('');
   const [enabledFilter, setEnabledFilter] = useState<'' | 'enabled' | 'disabled'>('');
@@ -57,14 +50,7 @@ export default function GatesPage() {
     setPendingCreate(payload);
   };
 
-  const handleUpdate = async (updates: {
-    camera_id?: string | null;
-    camera_ip?: string | null;
-    stream_path?: string | null;
-    gate_name?: string | null;
-    enabled?: boolean | null;
-    relay_register?: number | null;
-  }) => {
+  const handleUpdate = async (updates: GateConfigUpdatePayload) => {
     if (!editingGate) return;
     setPendingUpdate({ gate: editingGate, updates });
     setEditingGate(null);

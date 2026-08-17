@@ -22,6 +22,10 @@ export default function GateFormModal({ onClose, onSubmit }: GateFormModalProps)
     camera_id: '',
     camera_ip: '',
     stream_path: '',
+    camera_rtsp_username: '',
+    camera_rtsp_password: '',
+    camera_rtsp_port: 554,
+    camera_rtsp_path: '',
     gate_id: '',
     gate_name: '',
     direction: 'entry',
@@ -53,6 +57,10 @@ export default function GateFormModal({ onClose, onSubmit }: GateFormModalProps)
         ...form,
         camera_ip: normalizedIp || null,
         stream_path: form.stream_path?.trim() || null,
+        camera_rtsp_username: form.camera_rtsp_username?.trim() || null,
+        camera_rtsp_password: form.camera_rtsp_password || null,
+        camera_rtsp_port: form.camera_rtsp_port || null,
+        camera_rtsp_path: form.camera_rtsp_path?.trim().replace(/^\/+/, '') || null,
         i2c_bus_num: form.relay_mode === 'i2c' ? form.i2c_bus_num : null,
         i2c_address: form.relay_mode === 'i2c' ? form.i2c_address : null,
         relay_register: form.relay_mode === 'i2c' ? form.relay_register : null,
@@ -91,6 +99,48 @@ export default function GateFormModal({ onClose, onSubmit }: GateFormModalProps)
             placeholder="e.g. stream1 — the MediaMTX path name for this camera's live view"
           />
         </FormField>
+
+        <div>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+            Live View (optional) — leave blank to skip streaming for this camera
+          </p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <FormField label="RTSP Username">
+              <input
+                className={inputClass}
+                value={form.camera_rtsp_username ?? ''}
+                onChange={(e) => update('camera_rtsp_username', e.target.value)}
+                placeholder="e.g. admin"
+              />
+            </FormField>
+            <FormField label="RTSP Password">
+              <input
+                type="password"
+                className={inputClass}
+                value={form.camera_rtsp_password ?? ''}
+                onChange={(e) => update('camera_rtsp_password', e.target.value)}
+              />
+            </FormField>
+            <FormField label="RTSP Port">
+              <input
+                type="number"
+                className={inputClass}
+                value={form.camera_rtsp_port ?? ''}
+                onChange={(e) => update('camera_rtsp_port', e.target.value ? Number(e.target.value) : null)}
+                placeholder="554"
+              />
+            </FormField>
+            <FormField label="RTSP Path">
+              <input
+                className={inputClass}
+                value={form.camera_rtsp_path ?? ''}
+                onChange={(e) => update('camera_rtsp_path', e.target.value)}
+                placeholder="e.g. live/main"
+              />
+            </FormField>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <FormField label="Gate ID">
             <input
@@ -155,6 +205,10 @@ interface EditGateModalProps {
     camera_id?: string | null;
     camera_ip?: string | null;
     stream_path?: string | null;
+    camera_rtsp_username?: string | null;
+    camera_rtsp_password?: string | null;
+    camera_rtsp_port?: number | null;
+    camera_rtsp_path?: string | null;
     gate_name?: string | null;
     enabled?: boolean | null;
     relay_register?: number | null;
@@ -166,6 +220,10 @@ export function EditGateModal({ gate, onClose, onSubmit }: EditGateModalProps) {
   const [cameraId, setCameraId] = useState(gate.camera_id);
   const [cameraIp, setCameraIp] = useState(gate.camera_ip ?? '');
   const [streamPath, setStreamPath] = useState(gate.stream_path ?? '');
+  const [rtspUsername, setRtspUsername] = useState(gate.camera_rtsp_username ?? '');
+  const [rtspPassword, setRtspPassword] = useState(''); // blank = keep the existing saved password unchanged
+  const [rtspPort, setRtspPort] = useState(gate.camera_rtsp_port ?? 554);
+  const [rtspPath, setRtspPath] = useState(gate.camera_rtsp_path ?? '');
   const [relayRegister] = useState(gate.relay_register ?? 1);
   const [enabled, setEnabled] = useState(gate.enabled);
   const [submitting, setSubmitting] = useState(false);
@@ -186,6 +244,10 @@ export function EditGateModal({ gate, onClose, onSubmit }: EditGateModalProps) {
         camera_id: cameraId.trim(),
         camera_ip: normalizedIp || null,
         stream_path: streamPath.trim() || null,
+        camera_rtsp_username: rtspUsername.trim() || null,
+        camera_rtsp_password: rtspPassword || undefined, // omit entirely when blank, so the backend leaves the saved password untouched
+        camera_rtsp_port: rtspPort || null,
+        camera_rtsp_path: rtspPath.trim().replace(/^\/+/, '') || null,
         relay_register: gate.relay_mode === 'i2c' ? relayRegister : null,
         enabled,
       });
@@ -230,6 +292,50 @@ export function EditGateModal({ gate, onClose, onSubmit }: EditGateModalProps) {
             placeholder="e.g. stream1 — the MediaMTX path name for this camera's live view"
           />
         </FormField>
+
+        <div>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+            Live View
+          </p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <FormField label="RTSP Username">
+              <input
+                className={inputClass}
+                value={rtspUsername}
+                onChange={(e) => setRtspUsername(e.target.value)}
+                placeholder="e.g. admin"
+              />
+            </FormField>
+            <FormField
+              label={gate.camera_rtsp_password_set ? 'RTSP Password (leave blank to keep current)' : 'RTSP Password'}
+            >
+              <input
+                type="password"
+                className={inputClass}
+                value={rtspPassword}
+                onChange={(e) => setRtspPassword(e.target.value)}
+                placeholder={gate.camera_rtsp_password_set ? '••••••••' : ''}
+              />
+            </FormField>
+            <FormField label="RTSP Port">
+              <input
+                type="number"
+                className={inputClass}
+                value={rtspPort}
+                onChange={(e) => setRtspPort(e.target.value ? Number(e.target.value) : 554)}
+                placeholder="554"
+              />
+            </FormField>
+            <FormField label="RTSP Path">
+              <input
+                className={inputClass}
+                value={rtspPath}
+                onChange={(e) => setRtspPath(e.target.value)}
+                placeholder="e.g. live/main"
+              />
+            </FormField>
+          </div>
+        </div>
         <label className="flex items-center gap-2 text-sm text-slate-700">
           <input
             type="checkbox"
