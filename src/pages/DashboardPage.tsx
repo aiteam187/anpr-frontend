@@ -17,7 +17,6 @@ import RegisteredFleetChart from '../features/dashboard/charts/RegisteredFleetCh
 import ComplianceOverviewChart from '../features/dashboard/charts/ComplianceOverviewChart';
 import { useDashboardData } from '../features/dashboard/useDashboardData';
 import { getRangeForPreset, isWithinRange, type RangePreset } from '../utils/dateRange';
-import { getLast7DayCounts } from '../utils/chartData';
 
 function SectionLabel({ children }: { children: string }) {
   return (
@@ -49,11 +48,6 @@ export default function DashboardPage() {
     (v) => v.list_type === 'visitor' && v.is_active,
   ).length;
   const exitsInRange = data.history.filter((h) => isWithinRange(h.exit_time, range)).length;
-
-  const entriesTrend = getLast7DayCounts([
-    ...data.activeVehicles.map((v) => v.entry_time),
-    ...data.history.map((h) => h.entry_time),
-  ]);
 
   return (
     <div className="space-y-4">
@@ -101,7 +95,6 @@ export default function DashboardPage() {
               value={data.activeVehicles.length}
               sublabel="Inside Gate"
               to="/monitoring/tracking"
-              trend={entriesTrend}
             />
             <StatTile
               icon={LogOut}
