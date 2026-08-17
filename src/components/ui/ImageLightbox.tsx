@@ -19,12 +19,21 @@ export default function ImageLightbox({ src, alt, onClose }: ImageLightboxProps)
       >
         <X className="h-5 w-5" />
       </button>
-      <img
-        src={src}
-        alt={alt}
+      <div
+        className="flex flex-col items-center gap-4 rounded-lg bg-white p-3 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
-        className="max-h-[85vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
-      />
+      >
+        <div className="flex h-[420px] w-[560px] items-center justify-center overflow-hidden rounded-md bg-slate-100">
+          <img src={src} alt={alt} className="max-h-full max-w-full object-contain" />
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-md border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+        >
+          Cancel
+        </button>
+      </div>
     </div>
   );
 }
