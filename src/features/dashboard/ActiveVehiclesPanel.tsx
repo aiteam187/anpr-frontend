@@ -1,15 +1,22 @@
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import Panel from '../../components/ui/Panel';
+import ImageLightbox from '../../components/ui/ImageLightbox';
 import { assetUrl } from '../../services/api';
-import { formatConfidence, formatElapsed, formatTime } from '../../utils/format';
+import { formatElapsed, formatTime } from '../../utils/format';
 import type { ActiveVehicle } from '../../types/detection';
+import type { GateConfig } from '../../types/gate';
 
 interface ActiveVehiclesPanelProps {
   vehicles: ActiveVehicle[];
+  gates: GateConfig[];
 }
 
-export default function ActiveVehiclesPanel({ vehicles }: ActiveVehiclesPanelProps) {
+export default function ActiveVehiclesPanel({ vehicles, gates }: ActiveVehiclesPanelProps) {
+  const [zoomedImage, setZoomedImage] = useState<{ src: string; alt: string } | null>(null);
+  const gateByCameraId = useMemo(() => new Map(gates.map((g) => [g.camera_id, g])), [gates]);
+
   return (
     <Panel
       title="Active Vehicles"
@@ -31,7 +38,6 @@ export default function ActiveVehiclesPanel({ vehicles }: ActiveVehiclesPanelPro
               <th className="pb-2 font-medium">Number Plate</th>
               <th className="pb-2 font-medium">Entry Time</th>
               <th className="pb-2 font-medium">Duration</th>
-              <th className="pb-2 font-medium">Confidence</th>
               <th className="pb-2 font-medium">Camera</th>
               <th className="pb-2 font-medium">Status</th>
             </tr>
@@ -39,13 +45,14 @@ export default function ActiveVehiclesPanel({ vehicles }: ActiveVehiclesPanelPro
           <tbody>
             {vehicles.length === 0 && (
               <tr>
-                <td colSpan={6} className="py-6 text-center text-slate-400">
+                <td colSpan={5} className="py-6 text-center text-slate-400">
                   No vehicles currently inside
                 </td>
               </tr>
             )}
             {vehicles.map((v) => {
               const thumb = assetUrl(v.image_url);
+              const gate = gateByCameraId.get(v.cam_id) ?? null;
               return (
                 <tr key={`${v.plate_number}-${v.entry_time}`} className="border-t border-slate-200">
                   <td className="py-2.5">
@@ -54,7 +61,8 @@ export default function ActiveVehiclesPanel({ vehicles }: ActiveVehiclesPanelPro
                         <img
                           src={thumb}
                           alt={v.plate_number}
-                          className="h-8 w-12 rounded object-cover"
+                          onClick={() => setZoomedImage({ src: thumb, alt: v.plate_number })}
+                          className="h-8 w-12 cursor-pointer rounded object-cover"
                         />
                       )}
                       <span className="font-medium text-slate-900">{v.plate_number}</span>
@@ -68,8 +76,9 @@ export default function ActiveVehiclesPanel({ vehicles }: ActiveVehiclesPanelPro
                   >
                     {formatElapsed(v.elapsed_seconds)}
                   </td>
-                  <td className="py-2.5 text-slate-500">{formatConfidence(v.confidence)}</td>
-                  <td className="py-2.5 text-slate-500">{v.cam_id}</td>
+                  <td className="py-2.5 text-slate-500">
+                    {gate ? `${gate.gate_name} (${gate.direction})` : v.cam_id}
+                  </td>
                   <td className="py-2.5">
                     {v.is_overstayed ? (
                       <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">
@@ -87,6 +96,13 @@ export default function ActiveVehiclesPanel({ vehicles }: ActiveVehiclesPanelPro
           </tbody>
         </table>
       </div>
+      {zoomedImage && (
+        <ImageLightbox
+          src={zoomedImage.src}
+          alt={zoomedImage.alt}
+          onClose={() => setZoomedImage(null)}
+        />
+      )}
     </Panel>
   );
 }
