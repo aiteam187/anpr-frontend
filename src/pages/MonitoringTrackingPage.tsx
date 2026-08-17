@@ -17,7 +17,7 @@ import { LIST_TYPE_LABELS, LIST_TYPE_STYLES } from '../features/vehicleSearch/li
 import { useDashboardData } from '../features/dashboard/useDashboardData';
 import { SkeletonTable } from '../components/ui/Skeleton';
 import { assetUrl } from '../services/api';
-import { formatDateTime } from '../utils/format';
+import { formatDateTime, formatElapsed } from '../utils/format';
 
 const PAGE_SIZE = 20;
 
@@ -176,6 +176,9 @@ export default function MonitoringTrackingPage() {
                     Gate
                   </th>
                   <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Duration
+                  </th>
+                  <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Time
                   </th>
                   <th className="w-12 px-4 py-3" />
@@ -184,7 +187,7 @@ export default function MonitoringTrackingPage() {
               <tbody className="divide-y divide-slate-100">
                 {pageRecords.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="py-10 text-center text-slate-400">
+                    <td colSpan={8} className="py-10 text-center text-slate-400">
                       No matching activity
                     </td>
                   </tr>
@@ -216,7 +219,11 @@ export default function MonitoringTrackingPage() {
                         </span>
                       </td>
                       <td className="whitespace-nowrap px-4 py-3">
-                        {vehicle ? (
+                        {vehicle && !vehicle.is_active ? (
+                          <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+                            Deactivated
+                          </span>
+                        ) : vehicle ? (
                           <span
                             className={`rounded-full px-2 py-0.5 text-xs font-medium ${LIST_TYPE_STYLES[vehicle.list_type]}`}
                           >
@@ -230,6 +237,13 @@ export default function MonitoringTrackingPage() {
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-slate-600">
                         {gate ? `${gate.gate_name} (${gate.direction})` : r.camId}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-slate-500">
+                        {r.eventType === 'entry' && r.elapsedSeconds !== null
+                          ? formatElapsed(r.elapsedSeconds)
+                          : r.eventType === 'exit' && r.dwellTime
+                            ? r.dwellTime
+                            : '—'}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-slate-500">
                         {formatDateTime(r.time)}
