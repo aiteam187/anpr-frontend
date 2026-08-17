@@ -16,7 +16,7 @@ import { LIST_TYPE_LABELS, LIST_TYPE_STYLES } from '../vehicleSearch/listTypeBad
 import { getStreamPathForCamera } from '../../config/cameraStreams';
 import { FULL_CONTENT_RECT, type ContentRect } from '../../utils/videoFrame';
 import { assetUrl } from '../../services/api';
-import { formatRelativeTime } from '../../utils/format';
+import { formatElapsed, formatRelativeTime } from '../../utils/format';
 import type {
   ActiveVehicle,
   HistoryRecord,
@@ -116,6 +116,13 @@ export default function GateMonitorCard({
             </span>
           )}
         </td>
+        <td className="whitespace-nowrap px-3 py-2 text-slate-500">
+          {r.eventType === 'entry' && r.elapsedSeconds !== null
+            ? formatElapsed(r.elapsedSeconds)
+            : r.eventType === 'exit' && r.dwellTime
+              ? r.dwellTime
+              : '—'}
+        </td>
         <td className="whitespace-nowrap px-3 py-2 text-slate-500">{formatRelativeTime(r.time)}</td>
         <td className="px-3 py-2">
           <button
@@ -198,6 +205,9 @@ export default function GateMonitorCard({
                   List
                 </th>
                 <th className="whitespace-nowrap px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Duration
+                </th>
+                <th className="whitespace-nowrap px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Time
                 </th>
                 <th className="w-10 px-3 py-2" />
@@ -206,7 +216,7 @@ export default function GateMonitorCard({
             <tbody className="divide-y divide-slate-100">
               {records.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-slate-400">
+                  <td colSpan={7} className="py-8 text-center text-slate-400">
                     No vehicles recorded yet
                   </td>
                 </tr>

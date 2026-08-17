@@ -17,6 +17,12 @@ export interface ActivityRecord {
   confidence: number | null;
   plateVal: boolean | null;
   dwellTime: string | null;
+  /** Live "still inside" duration, in seconds — only set for entry-type
+   * records (the vehicle hasn't exited yet, so there's no dwellTime string
+   * from the backend). Applies to every list type (whitelist/employee,
+   * visitor, or unregistered) — the same live elapsed-time clock, not
+   * something specific to any one category. */
+  elapsedSeconds: number | null;
   note: string | null;
 }
 
@@ -36,6 +42,7 @@ export function buildActivityRecords(
       confidence: v.confidence,
       plateVal: v.plate_val,
       dwellTime: null,
+      elapsedSeconds: v.elapsed_seconds,
       note: null,
     })),
     ...history.map((h) => ({
@@ -48,6 +55,7 @@ export function buildActivityRecords(
       confidence: h.exit_confidence,
       plateVal: h.exit_plate_val,
       dwellTime: h.dwell_time,
+      elapsedSeconds: null,
       note: null,
     })),
     ...unauthorizedAttempts.map((u) => ({
@@ -60,6 +68,7 @@ export function buildActivityRecords(
       confidence: u.confidence,
       plateVal: null,
       dwellTime: null,
+      elapsedSeconds: null,
       note: formatUnauthorizedReason(u.reason),
     })),
   ];
