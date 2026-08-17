@@ -63,11 +63,18 @@ export default function GateMonitorCard({
     (r) => r.camId === gate.camera_id,
   );
 
-  // Unauthorized attempts never show up here at all (not even as a popup —
-  // just not surfaced on this page). Blacklisted vehicles DO show in this
-  // table like any other entry/exit, plus get a popup on top (below) since
-  // that's worth a more immediate alert than a table row alone.
-  const records = allRecordsForGate.filter((r) => r.eventType !== 'unauthorized').slice(0, RECENT_COUNT);
+  // Generic unauthorized attempts (unrecognized plate, expired visitor
+  // pass, etc.) never show up here at all. Blacklist is different: the
+  // backend denies a blacklisted plate at the point of entry/exit, which
+  // logs it as an UnauthorizedAttempt (reason="blacklisted") rather than
+  // creating an entry/exit record — so without this carve-out, a
+  // blacklisted vehicle would never appear in the table at all, only in
+  // the 5-second popup. Letting it through here keeps a permanent row
+  // (bounded only by RECENT_COUNT, same as everything else), on top of
+  // the popup for the more immediate alert.
+  const records = allRecordsForGate
+    .filter((r) => r.eventType !== 'unauthorized' || isBlacklisted(r))
+    .slice(0, RECENT_COUNT);
 
   const [toasts, setToasts] = useState<{ id: string; record: ActivityRecord }[]>([]);
   const seenFlagged = useRef<Set<string>>(new Set());
