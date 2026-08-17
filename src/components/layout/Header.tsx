@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Menu, Calendar, Clock, Bell, AlertTriangle, User, LogOut } from 'lucide-react';
+import { Menu, Calendar, Clock, Bell, AlertTriangle, User, LogOut, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useClock } from '../../hooks/useClock';
 import { useAuth } from '../../context/AuthContext';
@@ -16,6 +16,26 @@ import AnimatedText from '../ui/AnimatedText';
 import type { AlarmItem } from '../../types/alarms';
 
 const ALARM_POLL_MS = 3000;
+const DISMISSED_ALARMS_KEY = 'anpr_dismissed_alarms';
+
+/** Alarms have no persisted ID (the backend computes them live, nothing is
+ * stored) — this is the closest thing to a stable identity across polls. */
+function alarmKey(alarm: AlarmItem): string {
+  return `${alarmTitle(alarm)}::${alarmTarget(alarm) ?? ''}`;
+}
+
+function loadDismissed(): Set<string> {
+  try {
+    const raw = localStorage.getItem(DISMISSED_ALARMS_KEY);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function saveDismissed(keys: Set<string>) {
+  localStorage.setItem(DISMISSED_ALARMS_KEY, JSON.stringify(Array.from(keys)));
+}
 
 interface HeaderProps {
   onOpenMobileSidebar: () => void;
@@ -43,13 +63,22 @@ export default function Header({ onOpenMobileSidebar }: HeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [alarmsOpen, setAlarmsOpen] = useState(false);
   const [alarms, setAlarms] = useState<AlarmItem[]>([]);
-  const [alarmCount, setAlarmCount] = useState(0);
+  const [dismissed, setDismissed] = useState<Set<string>>(() => loadDismissed());
 
   const refreshAlarms = useCallback(async () => {
     try {
       const res = await getAlarms();
       setAlarms(res.alarms);
-      setAlarmCount(res.critical_count + res.warning_count);
+      // Self-cleaning: once an alarm's underlying condition actually clears,
+      // the backend stops returning it at all — drop it from the dismissed
+      // set too, so if that same alarm genuinely recurs later, it notifies
+      // again instead of staying silently dismissed forever.
+      setDismissed((prev) => {
+        const liveKeys = new Set(res.alarms.map(alarmKey));
+        const next = new Set(Array.from(prev).filter((k) => liveKeys.has(k)));
+        if (next.size !== prev.size) saveDismissed(next);
+        return next;
+      });
     } catch {
       // Silently ignore — the bell just stays at its last known count.
     }
@@ -60,6 +89,26 @@ export default function Header({ onOpenMobileSidebar }: HeaderProps) {
   }, [refreshAlarms]);
 
   useInterval(refreshAlarms, ALARM_POLL_MS);
+
+  const visibleAlarms = alarms.filter((a) => !dismissed.has(alarmKey(a)));
+  const alarmCount = visibleAlarms.length;
+
+  const dismissAlarm = (key: string) => {
+    setDismissed((prev) => {
+      const next = new Set(prev).add(key);
+      saveDismissed(next);
+      return next;
+    });
+  };
+
+  const dismissAll = () => {
+    setDismissed((prev) => {
+      const next = new Set(prev);
+      alarms.forEach((a) => next.add(alarmKey(a)));
+      saveDismissed(next);
+      return next;
+    });
+  };
 
   const dateLabel = `${now.getDate().toString().padStart(2, '0')} ${
     MONTH_NAMES[now.getMonth()]
@@ -119,22 +168,32 @@ export default function Header({ onOpenMobileSidebar }: HeaderProps) {
             <>
               <div className="fixed inset-0 z-40" onClick={() => setAlarmsOpen(false)} />
               <div className="absolute right-0 top-full z-50 mt-2 w-80 max-w-[90vw] rounded-md border border-slate-200 bg-white py-1 shadow-lg">
-                <div className="border-b border-slate-100 px-3 py-2">
+                <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2">
                   <p className="text-sm font-medium text-slate-900">Alarms & Events</p>
+                  {visibleAlarms.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={dismissAll}
+                      className="text-xs font-medium text-blue-600 hover:text-blue-700"
+                    >
+                      Clear all
+                    </button>
+                  )}
                 </div>
                 <div className="max-h-80 overflow-y-auto">
-                  {alarms.length === 0 ? (
+                  {visibleAlarms.length === 0 ? (
                     <p className="px-3 py-6 text-center text-sm text-slate-400">
                       No active alarms — all clear
                     </p>
                   ) : (
                     <ul className="divide-y divide-slate-100">
-                      {alarms.slice(0, 6).map((alarm, idx) => {
+                      {visibleAlarms.slice(0, 6).map((alarm, idx) => {
                         const severity = alarmSeverity(alarm);
                         const target = alarmTarget(alarm);
                         const timestamp = alarmTimestamp(alarm);
+                        const key = alarmKey(alarm);
                         return (
-                          <li key={idx} className="flex items-start gap-2 px-3 py-2">
+                          <li key={idx} className="group flex items-start gap-2 px-3 py-2">
                             <div
                               className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg ${
                                 severity === 'critical'
@@ -153,6 +212,14 @@ export default function Header({ onOpenMobileSidebar }: HeaderProps) {
                                 {formatRelativeTime(timestamp)}
                               </span>
                             )}
+                            <button
+                              type="button"
+                              onClick={() => dismissAlarm(key)}
+                              className="shrink-0 rounded p-0.5 text-slate-300 hover:bg-slate-100 hover:text-slate-600"
+                              title="Clear"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
                           </li>
                         );
                       })}
