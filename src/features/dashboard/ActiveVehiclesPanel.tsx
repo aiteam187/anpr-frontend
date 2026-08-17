@@ -80,9 +80,7 @@ export default function ActiveVehiclesPanel({ vehicles, history, gates }: Active
                     </div>
                   </td>
                   <td className="py-2.5 text-slate-500">{formatTime(r.time)}</td>
-                  <td className="py-2.5 text-slate-500">
-                    {gate ? `${gate.gate_name} (${gate.direction})` : r.camId}
-                  </td>
+                  <td className="py-2.5 text-slate-500">{gate ? gate.gate_name : r.camId}</td>
                   <td className="py-2.5">
                     {isIn ? (
                       <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
