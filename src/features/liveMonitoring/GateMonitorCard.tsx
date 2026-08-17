@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Eye, Scan } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Eye, Scan, ShieldAlert } from 'lucide-react';
 import Modal from '../../components/ui/Modal';
 import LiveCameraView from '../../components/ui/LiveCameraView';
 import ImageLightbox from '../../components/ui/ImageLightbox';
@@ -56,11 +56,39 @@ export default function GateMonitorCard({
   const camHealth = health?.camera.cameras[gate.camera_id];
   const online = gate.enabled && camHealth?.status === 'ok';
 
-  const records = buildActivityRecords(activeVehicles, history, unauthorizedAttempts)
-    .filter((r) => r.camId === gate.camera_id)
-    .slice(0, RECENT_COUNT);
-
   const vehicleByPlate = new Map(authorizedVehicles.map((v) => [v.plate_number, v]));
+  const isFlagged = (r: ActivityRecord) =>
+    r.eventType === 'unauthorized' || vehicleByPlate.get(r.plateNumber)?.list_type === 'blacklist';
+
+  const allRecordsForGate = buildActivityRecords(activeVehicles, history, unauthorizedAttempts).filter(
+    (r) => r.camId === gate.camera_id,
+  );
+
+  // Table only ever shows authorized traffic — unauthorized attempts and
+  // blacklisted vehicles are surfaced as a brief popup instead (below),
+  // not left sitting in this list.
+  const records = allRecordsForGate.filter((r) => !isFlagged(r)).slice(0, RECENT_COUNT);
+
+  const [toasts, setToasts] = useState<{ id: string; record: ActivityRecord }[]>([]);
+  const seenFlagged = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    const flagged = allRecordsForGate.filter(isFlagged);
+    const fresh = flagged.filter((r) => !seenFlagged.current.has(r.key));
+    if (fresh.length === 0) return;
+
+    fresh.forEach((r) => seenFlagged.current.add(r.key));
+    setToasts((prev) => [...prev, ...fresh.map((r) => ({ id: r.key, record: r }))]);
+    fresh.forEach((r) => {
+      setTimeout(() => {
+        setToasts((prev) => prev.filter((t) => t.id !== r.key));
+      }, 5000);
+    });
+    // Only re-run when the underlying source data actually changes (new
+    // poll), not on every render — allRecordsForGate/isFlagged are rebuilt
+    // fresh each render and would otherwise cause an infinite loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeVehicles, history, unauthorizedAttempts, gate.camera_id]);
 
   const renderActivityRow = (r: ActivityRecord, highlight: boolean) => {
     const vehicle = vehicleByPlate.get(r.plateNumber) ?? null;
@@ -119,7 +147,26 @@ export default function GateMonitorCard({
   };
 
   return (
-    <div className="flex flex-col rounded-xl border border-slate-200 bg-white">
+    <div className="relative flex flex-col rounded-xl border border-slate-200 bg-white">
+      {toasts.length > 0 && (
+        <div className="pointer-events-none absolute inset-x-0 top-2 z-30 flex flex-col items-center gap-2 px-3">
+          {toasts.map((t) => (
+            <div
+              key={t.id}
+              className="pointer-events-auto flex w-full max-w-sm items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 shadow-lg animate-fade-in-up"
+            >
+              <ShieldAlert className="h-4 w-4 shrink-0 text-red-600" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-red-800">{t.record.plateNumber}</p>
+                <p className="truncate text-xs text-red-600">
+                  {t.record.eventType === 'unauthorized' ? 'Unauthorized attempt' : 'Blacklisted vehicle'}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-semibold text-slate-900">{gate.gate_name}</h3>
