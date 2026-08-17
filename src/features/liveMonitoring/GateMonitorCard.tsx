@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { Eye, Scan, ShieldAlert } from 'lucide-react';
+import { useState } from 'react';
+import { Eye, Scan } from 'lucide-react';
 import Modal from '../../components/ui/Modal';
 import LiveCameraView from '../../components/ui/LiveCameraView';
 import ImageLightbox from '../../components/ui/ImageLightbox';
@@ -68,34 +68,12 @@ export default function GateMonitorCard({
   // backend denies a blacklisted plate at the point of entry/exit, which
   // logs it as an UnauthorizedAttempt (reason="blacklisted") rather than
   // creating an entry/exit record — so without this carve-out, a
-  // blacklisted vehicle would never appear in the table at all, only in
-  // the 5-second popup. Letting it through here keeps a permanent row
-  // (bounded only by RECENT_COUNT, same as everything else), on top of
-  // the popup for the more immediate alert.
+  // blacklisted vehicle would never appear in the table at all. No popup
+  // over the video for this anymore — the bell notification (backed by
+  // /alarms) is the alert now; this table row is the permanent record.
   const records = allRecordsForGate
     .filter((r) => r.eventType !== 'unauthorized' || isBlacklisted(r))
     .slice(0, RECENT_COUNT);
-
-  const [toasts, setToasts] = useState<{ id: string; record: ActivityRecord }[]>([]);
-  const seenFlagged = useRef<Set<string>>(new Set());
-
-  useEffect(() => {
-    const flagged = allRecordsForGate.filter(isBlacklisted);
-    const fresh = flagged.filter((r) => !seenFlagged.current.has(r.key));
-    if (fresh.length === 0) return;
-
-    fresh.forEach((r) => seenFlagged.current.add(r.key));
-    setToasts((prev) => [...prev, ...fresh.map((r) => ({ id: r.key, record: r }))]);
-    fresh.forEach((r) => {
-      setTimeout(() => {
-        setToasts((prev) => prev.filter((t) => t.id !== r.key));
-      }, 5000);
-    });
-    // Only re-run when the underlying source data actually changes (new
-    // poll), not on every render — allRecordsForGate/isFlagged are rebuilt
-    // fresh each render and would otherwise cause an infinite loop.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeVehicles, history, unauthorizedAttempts, gate.camera_id]);
 
   const renderActivityRow = (r: ActivityRecord, highlight: boolean) => {
     const vehicle = vehicleByPlate.get(r.plateNumber) ?? null;
@@ -192,23 +170,7 @@ export default function GateMonitorCard({
         </div>
       </div>
 
-      <div className="relative p-3">
-        {toasts.length > 0 && (
-          <div className="pointer-events-none absolute inset-x-3 top-3 z-30 flex flex-col items-center gap-2">
-            {toasts.map((t) => (
-              <div
-                key={t.id}
-                className="pointer-events-auto flex w-full max-w-sm items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 shadow-lg animate-fade-in-up"
-              >
-                <ShieldAlert className="h-4 w-4 shrink-0 text-red-600" />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-red-800">{t.record.plateNumber}</p>
-                  <p className="truncate text-xs text-red-600">Blacklisted vehicle</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+      <div className="p-3">
         <LiveCameraView
           streamPath={gate.stream_path || getStreamPathForCamera(gate.camera_id)}
           className="aspect-video w-full"
