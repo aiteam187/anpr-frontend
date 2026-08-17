@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 interface ImageLightboxProps {
@@ -7,7 +8,13 @@ interface ImageLightboxProps {
 }
 
 export default function ImageLightbox({ src, alt, onClose }: ImageLightboxProps) {
-  return (
+  // Portaled to document.body rather than rendered in place: several
+  // dashboard sections wrap their content in FadeIn, whose entrance
+  // animation ends on `transform: translateY(0)` (not `none`) — any
+  // non-none transform on an ancestor makes it the containing block for
+  // `position: fixed` descendants, so without the portal this modal was
+  // confined to that ancestor's box instead of covering the real viewport.
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6"
       onClick={onClose}
@@ -37,6 +44,7 @@ export default function ImageLightbox({ src, alt, onClose }: ImageLightboxProps)
           Cancel
         </button>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
