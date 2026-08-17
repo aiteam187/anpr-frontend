@@ -1,4 +1,5 @@
 import PageHeader from '../components/ui/PageHeader';
+import CollapsibleSection from '../components/ui/CollapsibleSection';
 import NotificationsPanel from '../features/settings/NotificationsPanel';
 import MaxVehiclesPerEmployeePanel from '../features/settings/MaxVehiclesPerEmployeePanel';
 import EmployeeOverstayLimitPanel from '../features/settings/EmployeeOverstayLimitPanel';
@@ -11,12 +12,17 @@ export default function SettingsPage() {
     <div className="space-y-4">
       <PageHeader title="Settings" description="System configuration" />
 
-      <NotificationsPanel />
-      <CameraWebhookUrlPanel />
-      <DbCredentialsPanel />
-      <ImageCaptureModePanel />
-      <MaxVehiclesPerEmployeePanel />
-      <EmployeeOverstayLimitPanel />
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <NotificationsPanel />
+        <ImageCaptureModePanel />
+        <MaxVehiclesPerEmployeePanel />
+        <EmployeeOverstayLimitPanel />
+      </div>
+
+      <CollapsibleSection title="Admin">
+        <CameraWebhookUrlPanel />
+        <DbCredentialsPanel />
+      </CollapsibleSection>
     </div>
   );
 }

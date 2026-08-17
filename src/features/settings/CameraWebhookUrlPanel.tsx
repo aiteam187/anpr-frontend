@@ -22,7 +22,7 @@ export default function CameraWebhookUrlPanel() {
   };
 
   return (
-    <Panel title="Camera Webhook URL" className="max-w-md">
+    <Panel title="Camera Webhook URL">
       <div className="space-y-3">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">

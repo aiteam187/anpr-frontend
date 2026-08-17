@@ -9,7 +9,7 @@ export default function NotificationsPanel() {
   if (support === 'checking') return null;
 
   return (
-    <Panel title="Push Notifications" className="max-w-md">
+    <Panel title="Push Notifications">
       {support === 'unsupported' ? (
         <p className="text-sm text-slate-500">
           This browser doesn&apos;t support push notifications.
