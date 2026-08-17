@@ -20,16 +20,19 @@ export default function ImageLightbox({ src, alt, onClose }: ImageLightboxProps)
         <X className="h-5 w-5" />
       </button>
       <div
-        className="flex flex-col items-center gap-4 rounded-lg bg-white p-3 shadow-2xl"
+        className="flex w-[560px] flex-col items-center gap-3 rounded-xl bg-white p-4 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex h-[420px] w-[560px] items-center justify-center overflow-hidden rounded-md bg-slate-100">
+        {/* 16:9 rather than a taller box — most captures (wide vehicle shots
+            or plate close-ups) are landscape, so a taller frame just added
+            empty gray space above/below the image instead of framing it. */}
+        <div className="flex h-[315px] w-full items-center justify-center overflow-hidden rounded-lg bg-slate-100">
           <img src={src} alt={alt} className="max-h-full max-w-full object-contain" />
         </div>
         <button
           type="button"
           onClick={onClose}
-          className="rounded-md border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          className="w-full rounded-md border border-slate-300 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
         >
           Cancel
         </button>
