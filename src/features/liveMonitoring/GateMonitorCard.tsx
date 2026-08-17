@@ -58,21 +58,21 @@ export default function GateMonitorCard({
 
   const vehicleByPlate = new Map(authorizedVehicles.map((v) => [v.plate_number, v]));
   const isBlacklisted = (r: ActivityRecord) => vehicleByPlate.get(r.plateNumber)?.list_type === 'blacklist';
+  const isDeactivated = (r: ActivityRecord) => vehicleByPlate.get(r.plateNumber)?.is_active === false;
 
   const allRecordsForGate = buildActivityRecords(activeVehicles, history, unauthorizedAttempts).filter(
     (r) => r.camId === gate.camera_id,
   );
 
   // Generic unauthorized attempts (unrecognized plate, expired visitor
-  // pass, etc.) never show up here at all. Blacklist is different: the
-  // backend denies a blacklisted plate at the point of entry/exit, which
-  // logs it as an UnauthorizedAttempt (reason="blacklisted") rather than
-  // creating an entry/exit record — so without this carve-out, a
-  // blacklisted vehicle would never appear in the table at all. No popup
-  // over the video for this anymore — the bell notification (backed by
-  // /alarms) is the alert now; this table row is the permanent record.
+  // pass, etc.) never show up here at all. Blacklist and deactivated are
+  // different: the backend denies both at the point of entry (blacklist
+  // at exit too), which logs them as an UnauthorizedAttempt rather than
+  // creating an entry/exit record — so without this carve-out, they'd
+  // never appear in the table at all. The bell notification (backed by
+  // /alarms) is the active alert; this table row is the permanent record.
   const records = allRecordsForGate
-    .filter((r) => r.eventType !== 'unauthorized' || isBlacklisted(r))
+    .filter((r) => r.eventType !== 'unauthorized' || isBlacklisted(r) || isDeactivated(r))
     .slice(0, RECENT_COUNT);
 
   const renderActivityRow = (r: ActivityRecord, highlight: boolean) => {
@@ -104,7 +104,11 @@ export default function GateMonitorCard({
           </span>
         </td>
         <td className="whitespace-nowrap px-3 py-2">
-          {vehicle ? (
+          {vehicle && !vehicle.is_active ? (
+            <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+              Deactivated
+            </span>
+          ) : vehicle ? (
             <span
               className={`rounded-full px-2 py-0.5 text-xs font-medium ${LIST_TYPE_STYLES[vehicle.list_type]}`}
             >
