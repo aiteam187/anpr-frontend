@@ -58,17 +58,16 @@ export default function GateMonitorCard({
 
   const vehicleByPlate = new Map(authorizedVehicles.map((v) => [v.plate_number, v]));
   const isBlacklisted = (r: ActivityRecord) => vehicleByPlate.get(r.plateNumber)?.list_type === 'blacklist';
-  // Excluded from the table entirely: unauthorized attempts never show up
-  // here at all (not even as a popup — just not surfaced on this page),
-  // and blacklisted vehicles are popped up instead (below) rather than
-  // left sitting in this list.
-  const isFlagged = (r: ActivityRecord) => r.eventType === 'unauthorized' || isBlacklisted(r);
 
   const allRecordsForGate = buildActivityRecords(activeVehicles, history, unauthorizedAttempts).filter(
     (r) => r.camId === gate.camera_id,
   );
 
-  const records = allRecordsForGate.filter((r) => !isFlagged(r)).slice(0, RECENT_COUNT);
+  // Unauthorized attempts never show up here at all (not even as a popup —
+  // just not surfaced on this page). Blacklisted vehicles DO show in this
+  // table like any other entry/exit, plus get a popup on top (below) since
+  // that's worth a more immediate alert than a table row alone.
+  const records = allRecordsForGate.filter((r) => r.eventType !== 'unauthorized').slice(0, RECENT_COUNT);
 
   const [toasts, setToasts] = useState<{ id: string; record: ActivityRecord }[]>([]);
   const seenFlagged = useRef<Set<string>>(new Set());
@@ -148,26 +147,7 @@ export default function GateMonitorCard({
   };
 
   return (
-    <div className="relative flex flex-col rounded-xl border border-slate-200 bg-white">
-      {toasts.length > 0 && (
-        <div className="pointer-events-none absolute inset-x-0 top-2 z-30 flex flex-col items-center gap-2 px-3">
-          {toasts.map((t) => (
-            <div
-              key={t.id}
-              className="pointer-events-auto flex w-full max-w-sm items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 shadow-lg animate-fade-in-up"
-            >
-              <ShieldAlert className="h-4 w-4 shrink-0 text-red-600" />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-red-800">{t.record.plateNumber}</p>
-                <p className="truncate text-xs text-red-600">
-                  Blacklisted vehicle
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
+    <div className="flex flex-col rounded-xl border border-slate-200 bg-white">
       <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-semibold text-slate-900">{gate.gate_name}</h3>
@@ -205,7 +185,23 @@ export default function GateMonitorCard({
         </div>
       </div>
 
-      <div className="p-3">
+      <div className="relative p-3">
+        {toasts.length > 0 && (
+          <div className="pointer-events-none absolute inset-x-3 top-3 z-30 flex flex-col items-center gap-2">
+            {toasts.map((t) => (
+              <div
+                key={t.id}
+                className="pointer-events-auto flex w-full max-w-sm items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 shadow-lg animate-fade-in-up"
+              >
+                <ShieldAlert className="h-4 w-4 shrink-0 text-red-600" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-red-800">{t.record.plateNumber}</p>
+                  <p className="truncate text-xs text-red-600">Blacklisted vehicle</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
         <LiveCameraView
           streamPath={gate.stream_path || getStreamPathForCamera(gate.camera_id)}
           className="aspect-video w-full"
