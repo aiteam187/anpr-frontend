@@ -107,17 +107,18 @@ export default function VisitorsPage() {
       <PageHeader
         title="Visitor Management"
         description="Time-bound vehicle access for visitors"
-        action={
-          <button
-            type="button"
-            onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500"
-          >
-            <Plus className="h-4 w-4" />
-            Add Visitor
-          </button>
-        }
       />
+
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() => setShowAddModal(true)}
+          className="flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500"
+        >
+          <Plus className="h-4 w-4" />
+          Add Visitor
+        </button>
+      </div>
 
       <Panel
         title={`Visitors (${filtered.length})`}

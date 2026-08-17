@@ -76,20 +76,18 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader
-        title="Users"
-        description="Dashboard users and their access roles"
-        action={
-          <button
-            type="button"
-            onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500"
-          >
-            <Plus className="h-4 w-4" />
-            Add User
-          </button>
-        }
-      />
+      <PageHeader title="Users" description="Dashboard users and their access roles" />
+
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() => setShowAddModal(true)}
+          className="flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500"
+        >
+          <Plus className="h-4 w-4" />
+          Add User
+        </button>
+      </div>
 
       <Panel
         title={`Users (${filtered.length})`}
