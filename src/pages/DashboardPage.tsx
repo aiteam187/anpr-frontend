@@ -197,8 +197,9 @@ export default function DashboardPage() {
               unauthorizedAttempts={data.unauthorizedAttempts}
               activeVehicles={data.activeVehicles}
               health={data.health}
+              gates={data.gates}
             />
-            <SystemHealthPanel health={data.health} />
+            <SystemHealthPanel health={data.health} gates={data.gates} />
           </FadeIn>
         </>
       )}

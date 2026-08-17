@@ -1,13 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import {
-  Ban,
-  Car,
-  LogIn,
-  LogOut,
-  ShieldAlert,
-  ShieldCheck,
-  TrendingUp,
-} from 'lucide-react';
+import { Ban, Car, LogIn, LogOut, ShieldAlert, TrendingUp } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import Panel from '../components/ui/Panel';
 import FadeIn from '../components/ui/FadeIn';
@@ -80,10 +72,6 @@ export default function AnalyticsPage() {
     refresh(startDate, endDate);
   };
 
-  const confidenceLabel =
-    summary?.avg_recognition_confidence_pct != null
-      ? `${summary.avg_recognition_confidence_pct.toFixed(1)}%`
-      : '—';
   const peakHourLabel = summary?.peak_hour
     ? `${summary.peak_hour.hour.toString().padStart(2, '0')}:00`
     : '—';
@@ -163,7 +151,6 @@ export default function AnalyticsPage() {
                 value={summary.totals.blacklisted_attempts}
                 tone={summary.totals.blacklisted_attempts > 0 ? 'danger' : 'default'}
               />
-              <StatTile icon={ShieldCheck} label="Avg Confidence" value={confidenceLabel} tone="success" />
             </div>
           </FadeIn>
 

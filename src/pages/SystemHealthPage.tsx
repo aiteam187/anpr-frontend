@@ -134,7 +134,6 @@ export default function SystemHealthPage() {
                 <thead>
                   <tr className="text-xs text-slate-500">
                     <th className="pb-2 font-medium">Camera</th>
-                    <th className="pb-2 font-medium">Gate</th>
                     <th className="pb-2 font-medium">Status</th>
                     <th className="pb-2 font-medium">Last Contact</th>
                   </tr>
@@ -142,7 +141,7 @@ export default function SystemHealthPage() {
                 <tbody>
                   {cameraEntries.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="py-6 text-center text-slate-400">
+                      <td colSpan={3} className="py-6 text-center text-slate-400">
                         No cameras reporting
                       </td>
                     </tr>
@@ -151,9 +150,8 @@ export default function SystemHealthPage() {
                     const gate = gateByCameraId.get(camId);
                     return (
                       <tr key={camId} className="border-t border-slate-200">
-                        <td className="py-2.5 font-medium text-slate-900">{camId}</td>
-                        <td className="py-2.5 text-slate-600">
-                          {gate ? `${gate.gate_name} (${gate.direction})` : '—'}
+                        <td className="py-2.5 font-medium text-slate-900">
+                          {gate ? `${gate.gate_name} (${gate.direction})` : camId}
                         </td>
                         <td className="py-2.5">
                           <StatusPill ok={cam.status === 'ok'} okLabel="Online" badLabel="Offline" />

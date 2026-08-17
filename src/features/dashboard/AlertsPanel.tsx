@@ -8,6 +8,7 @@ import { formatRelativeTime } from '../../utils/format';
 import { getRangeForPreset, isWithinRange, type RangePreset } from '../../utils/dateRange';
 import type { ActiveVehicle, UnauthorizedAttempt } from '../../types/detection';
 import type { SystemHealth } from '../../types/health';
+import type { GateConfig } from '../../types/gate';
 import { formatUnauthorizedReason } from '../liveMonitoring/unauthorizedReason';
 
 interface Alert {
@@ -29,16 +30,23 @@ interface AlertsPanelProps {
   unauthorizedAttempts: UnauthorizedAttempt[];
   activeVehicles: ActiveVehicle[];
   health: SystemHealth | null;
+  gates: GateConfig[];
 }
 
 export default function AlertsPanel({
   unauthorizedAttempts,
   activeVehicles,
   health,
+  gates,
 }: AlertsPanelProps) {
   const [preset, setPreset] = useState<RangePreset>('today');
   const [customDate, setCustomDate] = useState('');
   const range = getRangeForPreset(preset, customDate);
+  const gateByCameraId = new Map(gates.map((g) => [g.camera_id, g]));
+  const gateLabel = (camId: string) => {
+    const gate = gateByCameraId.get(camId);
+    return gate ? `${gate.gate_name} (${gate.direction})` : camId;
+  };
 
   const alerts: Alert[] = [];
 
@@ -49,7 +57,7 @@ export default function AlertsPanel({
         key: `unauth-${a.plate_number}-${a.timestamp}`,
         icon: ShieldAlert,
         title: formatUnauthorizedReason(a.reason),
-        detail: `${a.plate_number} at ${a.cam_id}`,
+        detail: `${a.plate_number} at ${gateLabel(a.cam_id)}`,
         time: a.timestamp,
         severity: 'high',
       });
@@ -62,7 +70,7 @@ export default function AlertsPanel({
         key: `overstay-${v.plate_number}-${v.entry_time}`,
         icon: Clock3,
         title: 'Vehicle Overstayed',
-        detail: `${v.plate_number} at ${v.cam_id}`,
+        detail: `${v.plate_number} at ${gateLabel(v.cam_id)}`,
         time: v.last_alert_time ?? v.entry_time,
         severity: 'medium',
       });
@@ -75,7 +83,7 @@ export default function AlertsPanel({
           key: `camera-${camId}`,
           icon: AlertTriangle,
           title: 'Camera Offline',
-          detail: camId,
+          detail: gateLabel(camId),
           time: cam.last_contact ?? new Date().toISOString(),
           severity: 'high',
         });

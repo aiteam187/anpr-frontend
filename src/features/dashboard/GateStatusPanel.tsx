@@ -29,14 +29,13 @@ export default function GateStatusPanel({ gates, health }: GateStatusPanelProps)
             <tr className="text-xs text-slate-500">
               <th className="pb-2 font-medium">Gate</th>
               <th className="pb-2 font-medium">Direction</th>
-              <th className="pb-2 font-medium">Camera</th>
               <th className="pb-2 font-medium">Status</th>
             </tr>
           </thead>
           <tbody>
             {gates.length === 0 && (
               <tr>
-                <td colSpan={4} className="py-4 text-center text-slate-400">
+                <td colSpan={3} className="py-4 text-center text-slate-400">
                   No gates configured
                 </td>
               </tr>
@@ -49,7 +48,6 @@ export default function GateStatusPanel({ gates, health }: GateStatusPanelProps)
                 <tr key={gate.id} className="border-t border-slate-200">
                   <td className="py-2.5 font-medium text-slate-900">{gate.gate_name}</td>
                   <td className="py-2.5 capitalize text-slate-600">{gate.direction}</td>
-                  <td className="py-2.5 text-slate-500">{gate.camera_id}</td>
                   <td className="py-2.5">
                     {!gate.enabled ? (
                       <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">

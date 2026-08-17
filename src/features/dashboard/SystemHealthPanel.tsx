@@ -3,9 +3,11 @@ import { ChevronRight } from 'lucide-react';
 import Panel from '../../components/ui/Panel';
 import { formatRelativeTime } from '../../utils/format';
 import type { SystemHealth } from '../../types/health';
+import type { GateConfig } from '../../types/gate';
 
 interface SystemHealthPanelProps {
   health: SystemHealth | null;
+  gates: GateConfig[];
 }
 
 const viewAllAction = (
@@ -26,7 +28,7 @@ function StatusDot({ ok }: { ok: boolean }) {
   );
 }
 
-export default function SystemHealthPanel({ health }: SystemHealthPanelProps) {
+export default function SystemHealthPanel({ health, gates }: SystemHealthPanelProps) {
   if (!health) {
     return (
       <Panel title="System Health" action={viewAllAction}>
@@ -36,6 +38,7 @@ export default function SystemHealthPanel({ health }: SystemHealthPanelProps) {
   }
 
   const cameras = Object.entries(health.camera.cameras);
+  const gateByCameraId = new Map(gates.map((g) => [g.camera_id, g]));
 
   return (
     <Panel title="System Health" action={viewAllAction}>
@@ -56,15 +59,18 @@ export default function SystemHealthPanel({ health }: SystemHealthPanelProps) {
             {health.scheduler_running ? 'Running' : 'Stopped'}
           </span>
         </li>
-        {cameras.map(([camId, cam]) => (
-          <li key={camId} className="flex items-center justify-between">
-            <span className="flex items-center gap-2 text-slate-700">
-              <StatusDot ok={cam.status === 'ok'} />
-              Camera {camId}
-            </span>
-            <span className="text-slate-500">{formatRelativeTime(cam.last_contact)}</span>
-          </li>
-        ))}
+        {cameras.map(([camId, cam]) => {
+          const gate = gateByCameraId.get(camId);
+          return (
+            <li key={camId} className="flex items-center justify-between">
+              <span className="flex items-center gap-2 text-slate-700">
+                <StatusDot ok={cam.status === 'ok'} />
+                {gate ? `${gate.gate_name} (${gate.direction})` : camId}
+              </span>
+              <span className="text-slate-500">{formatRelativeTime(cam.last_contact)}</span>
+            </li>
+          );
+        })}
         <li className="flex items-center justify-between">
           <span className="flex items-center gap-2 text-slate-700">
             <StatusDot ok={health.relays.status === 'ok'} />

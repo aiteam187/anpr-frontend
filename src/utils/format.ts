@@ -43,8 +43,3 @@ export function formatRelativeTime(iso: string | null | undefined): string {
   const days = Math.floor(hours / 24);
   return `${days}d ago`;
 }
-
-export function formatConfidence(confidence: number | null | undefined): string {
-  if (confidence === null || confidence === undefined) return '—';
-  return `${confidence}/28`;
-}

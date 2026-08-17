@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import Modal from '../../components/ui/Modal';
 import ImageLightbox from '../../components/ui/ImageLightbox';
 import { assetUrl } from '../../services/api';
-import { formatConfidence, formatDateTime } from '../../utils/format';
+import { formatDateTime } from '../../utils/format';
 import { EVENT_LABELS, EVENT_STYLES, type ActivityRecord } from './activityRecords';
 import { LIST_TYPE_LABELS, LIST_TYPE_STYLES } from '../vehicleSearch/listTypeBadge';
 import type { AuthorizedVehicle } from '../../types/authorizedVehicle';
@@ -68,8 +68,6 @@ export default function ActivityDetailModal({
           <InfoRow label="Number Plate" value={record.plateNumber} />
           <InfoRow label="Time" value={formatDateTime(record.time)} />
           <InfoRow label="Gate" value={gate ? `${gate.gate_name} (${gate.direction})` : record.camId} />
-          <InfoRow label="Camera ID" value={record.camId} />
-          <InfoRow label="Confidence" value={formatConfidence(record.confidence)} />
           <InfoRow
             label="Plate Validated"
             value={record.plateVal === null ? null : record.plateVal ? 'Yes' : 'No'}
