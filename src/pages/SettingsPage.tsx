@@ -3,6 +3,7 @@ import NotificationsPanel from '../features/settings/NotificationsPanel';
 import MaxVehiclesPerEmployeePanel from '../features/settings/MaxVehiclesPerEmployeePanel';
 import EmployeeOverstayLimitPanel from '../features/settings/EmployeeOverstayLimitPanel';
 import ImageCaptureModePanel from '../features/settings/ImageCaptureModePanel';
+import CameraWebhookUrlPanel from '../features/settings/CameraWebhookUrlPanel';
 
 export default function SettingsPage() {
   return (
@@ -10,6 +11,7 @@ export default function SettingsPage() {
       <PageHeader title="Settings" description="System configuration" />
 
       <NotificationsPanel />
+      <CameraWebhookUrlPanel />
       <ImageCaptureModePanel />
       <MaxVehiclesPerEmployeePanel />
       <EmployeeOverstayLimitPanel />

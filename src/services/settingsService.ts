@@ -19,6 +19,10 @@ export function updateImageCaptureMode(mode: 'full' | 'plate_only') {
   return apiPut<{ status: string; mode: string }>('/settings/image-capture-mode', { mode });
 }
 
+export function getCameraWebhookUrl() {
+  return apiGet<{ url: string }>('/settings/camera-webhook-url');
+}
+
 export function getEmployeeOverstayLimitHours() {
   return apiGet<{ hours: number }>('/settings/employee-overstay-limit-hours');
 }
