@@ -146,7 +146,11 @@ export default function DashboardPage() {
 
           <SectionLabel>Activity & Gates</SectionLabel>
           <FadeIn delay={160} className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-            <HourlyActivityChart activeVehicles={data.activeVehicles} history={data.history} />
+            <HourlyActivityChart
+              activeVehicles={data.activeVehicles}
+              history={data.history}
+              range={range}
+            />
             <GateStatusPanel gates={data.gates} health={data.health} />
           </FadeIn>
 
@@ -168,11 +172,16 @@ export default function DashboardPage() {
 
           <SectionLabel>Traffic Trends</SectionLabel>
           <FadeIn delay={400} className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-            <WeeklyTrafficChart activeVehicles={data.activeVehicles} history={data.history} />
+            <WeeklyTrafficChart
+              activeVehicles={data.activeVehicles}
+              history={data.history}
+              range={range}
+            />
             <AccessOutcomeDonut
               activeVehicles={data.activeVehicles}
               history={data.history}
               unauthorizedAttempts={data.unauthorizedAttempts}
+              range={range}
             />
           </FadeIn>
 

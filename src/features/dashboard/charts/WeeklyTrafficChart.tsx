@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   Area,
   CartesianGrid,
@@ -9,10 +8,9 @@ import {
   YAxis,
 } from 'recharts';
 import Panel from '../../../components/ui/Panel';
-import RangeDropdown from '../../../components/ui/RangeDropdown';
 import ChartTooltip from './ChartTooltip';
 import { getTrafficSeries } from '../../../utils/chartData';
-import { getRangeForPreset, type RangePreset } from '../../../utils/dateRange';
+import type { DateRange } from '../../../utils/dateRange';
 import type { ActiveVehicle, HistoryRecord } from '../../../types/detection';
 
 const ENTRIES_COLOR = '#10b981';
@@ -21,29 +19,14 @@ const EXITS_COLOR = '#2563eb';
 interface WeeklyTrafficChartProps {
   activeVehicles: ActiveVehicle[];
   history: HistoryRecord[];
+  range: DateRange;
 }
 
-export default function WeeklyTrafficChart({ activeVehicles, history }: WeeklyTrafficChartProps) {
-  const [preset, setPreset] = useState<RangePreset>('today');
-  const [customDate, setCustomDate] = useState('');
-  const range = getRangeForPreset(preset, customDate);
+export default function WeeklyTrafficChart({ activeVehicles, history, range }: WeeklyTrafficChartProps) {
   const data = getTrafficSeries(activeVehicles, history, range);
 
   return (
-    <Panel
-      title="Traffic Trend"
-      className="lg:col-span-2"
-      action={
-        <RangeDropdown
-          preset={preset}
-          customDate={customDate}
-          onChange={(p, d) => {
-            setPreset(p);
-            if (d) setCustomDate(d);
-          }}
-        />
-      }
-    >
+    <Panel title="Traffic Trend" className="lg:col-span-2">
       <div className="mb-3 flex items-center gap-4 text-xs text-slate-500">
         <span className="flex items-center gap-1.5">
           <span className="h-2 w-2 rounded-full" style={{ backgroundColor: ENTRIES_COLOR }} />

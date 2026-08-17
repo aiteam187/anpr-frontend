@@ -1,10 +1,8 @@
-import { useState } from 'react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis } from 'recharts';
 import Panel from '../../../components/ui/Panel';
-import RangeDropdown from '../../../components/ui/RangeDropdown';
 import ChartTooltip from './ChartTooltip';
 import { getHourlyPattern } from '../../../utils/chartData';
-import { getRangeForPreset, type RangePreset } from '../../../utils/dateRange';
+import type { DateRange } from '../../../utils/dateRange';
 import type { ActiveVehicle, HistoryRecord } from '../../../types/detection';
 
 const COLOR = '#2563eb';
@@ -12,30 +10,15 @@ const COLOR = '#2563eb';
 interface HourlyActivityChartProps {
   activeVehicles: ActiveVehicle[];
   history: HistoryRecord[];
+  range: DateRange;
 }
 
-export default function HourlyActivityChart({ activeVehicles, history }: HourlyActivityChartProps) {
-  const [preset, setPreset] = useState<RangePreset>('today');
-  const [customDate, setCustomDate] = useState('');
-  const range = getRangeForPreset(preset, customDate);
+export default function HourlyActivityChart({ activeVehicles, history, range }: HourlyActivityChartProps) {
   const data = getHourlyPattern(activeVehicles, history, range);
   const total = data.reduce((sum, d) => sum + d.count, 0);
 
   return (
-    <Panel
-      title="Activity by Time of Day"
-      className="lg:col-span-2"
-      action={
-        <RangeDropdown
-          preset={preset}
-          customDate={customDate}
-          onChange={(p, d) => {
-            setPreset(p);
-            if (d) setCustomDate(d);
-          }}
-        />
-      }
-    >
+    <Panel title="Activity by Time of Day" className="lg:col-span-2">
       <p className="mb-3 text-xs text-slate-500">
         <span className="font-semibold text-slate-900">{total}</span> entries in this period
       </p>

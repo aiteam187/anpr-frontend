@@ -1,10 +1,8 @@
-import { useState } from 'react';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import Panel from '../../../components/ui/Panel';
-import RangeDropdown from '../../../components/ui/RangeDropdown';
 import ChartTooltip from './ChartTooltip';
 import { getAccessOutcome } from '../../../utils/chartData';
-import { getRangeForPreset, type RangePreset } from '../../../utils/dateRange';
+import type { DateRange } from '../../../utils/dateRange';
 import type { ActiveVehicle, HistoryRecord, UnauthorizedAttempt } from '../../../types/detection';
 
 const COLORS: Record<string, string> = {
@@ -16,34 +14,21 @@ interface AccessOutcomeDonutProps {
   activeVehicles: ActiveVehicle[];
   history: HistoryRecord[];
   unauthorizedAttempts: UnauthorizedAttempt[];
+  range: DateRange;
 }
 
 export default function AccessOutcomeDonut({
   activeVehicles,
   history,
   unauthorizedAttempts,
+  range,
 }: AccessOutcomeDonutProps) {
-  const [preset, setPreset] = useState<RangePreset>('today');
-  const [customDate, setCustomDate] = useState('');
-  const range = getRangeForPreset(preset, customDate);
   const data = getAccessOutcome(activeVehicles, history, unauthorizedAttempts, range);
   const total = data.reduce((sum, d) => sum + d.value, 0);
   const nonZero = data.filter((d) => d.value > 0);
 
   return (
-    <Panel
-      title="Access Outcomes"
-      action={
-        <RangeDropdown
-          preset={preset}
-          customDate={customDate}
-          onChange={(p, d) => {
-            setPreset(p);
-            if (d) setCustomDate(d);
-          }}
-        />
-      }
-    >
+    <Panel title="Access Outcomes">
       {total === 0 ? (
         <div className="flex h-[220px] flex-col items-center justify-center text-center">
           <p className="text-sm text-slate-400">No activity recorded in this period</p>
