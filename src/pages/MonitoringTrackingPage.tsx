@@ -263,11 +263,8 @@ export default function MonitoringTrackingPage() {
             <ExportControls
               kind={exportKindForEventFilter(eventFilter)}
               fallback="vehicle-tracking.csv"
-              params={{
-                plate: query.trim() || undefined,
-                start_date: startDate || undefined,
-                end_date: endDate || undefined,
-              }}
+              params={{ plate: query.trim() || undefined }}
+              withTimeline
             />
           }
         >
