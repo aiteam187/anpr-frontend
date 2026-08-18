@@ -65,7 +65,7 @@ export default function DateRangeDropdown({
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full z-50 mt-2 w-80 rounded-md border border-slate-200 bg-white p-2 shadow-lg">
+          <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-md border border-slate-200 bg-white p-2 shadow-lg">
             {PRESETS.map((p) => (
               <button
                 key={p.value}
