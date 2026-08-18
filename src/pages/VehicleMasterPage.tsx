@@ -13,6 +13,9 @@ import BulkUploadModal from '../features/whitelist/BulkUploadModal';
 import BlacklistReasonModal from '../features/whitelist/BlacklistReasonModal';
 import VehicleInfoModal from '../features/whitelist/VehicleInfoModal';
 import SimpleMasterPage from '../features/masters/SimpleMasterPage';
+import VisitorTable from '../features/visitors/VisitorTable';
+import AddVisitorModal, { type NewVisitorInput } from '../features/visitors/AddVisitorModal';
+import EditVisitorModal, { type VisitorEditInput } from '../features/visitors/EditVisitorModal';
 import { LIST_TYPE_LABELS, LIST_TYPE_STYLES } from '../features/vehicleSearch/listTypeBadge';
 import { formatDateTime } from '../utils/format';
 import { isPastDate } from '../utils/validation';
@@ -22,6 +25,7 @@ import {
   bulkUploadAuthorizedVehicles,
   deactivateAuthorizedVehicle,
   getAuthorizedVehicles,
+  revokeAuthorizedVehicle,
   switchListType,
   updateVehicleDetails,
 } from '../services/authorizedVehiclesService';
@@ -29,12 +33,13 @@ import { getEmployees, vehicleTypesApi } from '../services/mastersService';
 import type { AuthorizedVehicle, ListType } from '../types/authorizedVehicle';
 import type { Employee } from '../types/masters';
 
-type Tab = 'vehicles' | 'allowlist' | 'blacklist' | 'vehicle-types';
+type Tab = 'vehicles' | 'allowlist' | 'blacklist' | 'visitors' | 'vehicle-types';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'vehicles', label: 'Vehicles' },
   { key: 'allowlist', label: 'Allowlist' },
   { key: 'blacklist', label: 'Blacklist' },
+  { key: 'visitors', label: 'Visitors' },
   { key: 'vehicle-types', label: 'Vehicle Types' },
 ];
 
@@ -70,7 +75,7 @@ export default function VehicleMasterPage() {
     <div className="space-y-4">
       <PageHeader
         title="Vehicle Master"
-        description="Allowlist, blacklist, and vehicle types — all in one place"
+        description="Allowlist, blacklist, visitors, and vehicle types — all in one place"
       />
 
       <div className="flex gap-1 border-b border-slate-200">
@@ -93,6 +98,7 @@ export default function VehicleMasterPage() {
       {tab === 'vehicles' && <VehiclesTab employees={employees} vehicleTypes={vehicleTypes} />}
       {tab === 'allowlist' && <AllowlistTab employees={employees} vehicleTypes={vehicleTypes} />}
       {tab === 'blacklist' && <BlacklistTab employees={employees} vehicleTypes={vehicleTypes} />}
+      {tab === 'visitors' && <VisitorsTab />}
       {tab === 'vehicle-types' && (
         <SimpleMasterPage
           title="Vehicle Types"
@@ -114,7 +120,6 @@ const LIST_TYPE_FILTERS: { value: ListType | ''; label: string }[] = [
   { value: '', label: 'All Lists' },
   { value: 'whitelist', label: 'Allowlist' },
   { value: 'blacklist', label: 'Blacklist' },
-  { value: 'visitor', label: 'Visitor' },
 ];
 
 /** Compact insurance/PUC expiry summary for a table row — mirrors the full breakdown in VehicleInfoModal but condensed to fit one cell. */
@@ -138,7 +143,7 @@ function ComplianceCell({ vehicle: v }: { vehicle: AuthorizedVehicle }) {
   );
 }
 
-/** Default overview tab — every vehicle regardless of list type, in one table with a list-type filter. The dedicated Allowlist/Blacklist tabs exist alongside this for one-click access to just those lists; this tab is for browsing/searching everything at once. */
+/** Default overview tab — every non-visitor vehicle (whitelist + blacklist), in one table with a list-type filter. The dedicated Allowlist/Blacklist tabs exist alongside this for one-click access to just those lists. Visitors get their own separate tab (VisitorsTab) instead of being mixed in here — they're time-bound guest access, not permanent fleet records. */
 function VehiclesTab({ employees, vehicleTypes }: TabProps) {
   const [vehicles, setVehicles] = useState<AuthorizedVehicle[]>([]);
   const [loading, setLoading] = useState(true);
@@ -157,7 +162,7 @@ function VehiclesTab({ employees, vehicleTypes }: TabProps) {
   const refresh = useCallback(async () => {
     try {
       const res = await getAuthorizedVehicles();
-      setVehicles(res);
+      setVehicles(res.filter((v) => v.list_type !== 'visitor'));
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load vehicles');
@@ -905,6 +910,179 @@ function BlacklistTab({ employees, vehicleTypes }: TabProps) {
           confirmLabel="Restore"
           onConfirm={handleRestore}
           onClose={() => setRestoreTarget(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+/** Time-bound guest vehicle access — kept on its own tab instead of mixed into the Vehicles/Allowlist/Blacklist lists, since visitors have a different lifecycle (visit purpose, valid window, convert-to-permanent/revoke) than permanent fleet records. */
+function VisitorsTab() {
+  const [visitors, setVisitors] = useState<AuthorizedVehicle[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'' | 'active' | 'inactive'>('');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingVisitor, setEditingVisitor] = useState<AuthorizedVehicle | null>(null);
+  const [convertTarget, setConvertTarget] = useState<AuthorizedVehicle | null>(null);
+  const [revokeTarget, setRevokeTarget] = useState<AuthorizedVehicle | null>(null);
+
+  const refresh = useCallback(async () => {
+    try {
+      const res = await getAuthorizedVehicles();
+      setVisitors(res.filter((v) => v.list_type === 'visitor'));
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load visitors');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toUpperCase();
+    return visitors.filter((v) => {
+      if (statusFilter === 'active' && !v.is_active) return false;
+      if (statusFilter === 'inactive' && v.is_active) return false;
+      if (!q) return true;
+      return (
+        v.plate_number.toUpperCase().includes(q) ||
+        (v.owner_name ?? '').toUpperCase().includes(q) ||
+        (v.visiting_whom ?? '').toUpperCase().includes(q)
+      );
+    });
+  }, [visitors, query, statusFilter]);
+
+  const handleAdd = async (input: NewVisitorInput) => {
+    await addAuthorizedVehicle({ plate_number: input.plateNumber });
+    await switchListType(input.plateNumber, {
+      list_type: 'visitor',
+      visit_purpose: input.visitPurpose,
+      visiting_whom: input.visitingWhom,
+      valid_from: input.validFrom,
+      valid_until: input.validUntil,
+    });
+    await updateVehicleDetails(input.plateNumber, input.details);
+    setShowAddModal(false);
+    await refresh();
+  };
+
+  const handleEdit = async (input: VisitorEditInput) => {
+    if (!editingVisitor) return;
+    await switchListType(editingVisitor.plate_number, {
+      list_type: 'visitor',
+      visit_purpose: input.visitPurpose,
+      visiting_whom: input.visitingWhom,
+      valid_from: input.validFrom,
+      valid_until: input.validUntil,
+    });
+    await updateVehicleDetails(editingVisitor.plate_number, input.details);
+    setEditingVisitor(null);
+    await refresh();
+  };
+
+  const handleConvertToPermanent = async () => {
+    if (!convertTarget) return;
+    await switchListType(convertTarget.plate_number, { list_type: 'whitelist' });
+    setConvertTarget(null);
+    await refresh();
+  };
+
+  const handleRevoke = async () => {
+    if (!revokeTarget) return;
+    await revokeAuthorizedVehicle(revokeTarget.plate_number);
+    setRevokeTarget(null);
+    await refresh();
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() => setShowAddModal(true)}
+          className="flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500"
+        >
+          <Plus className="h-4 w-4" />
+          Add Visitor
+        </button>
+      </div>
+
+      <Panel
+        title={`Visitors (${filtered.length})`}
+        action={
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+              <input
+                className={`${inputClass} w-56 py-1 pl-7 text-xs`}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Plate, visitor, visiting whom…"
+              />
+            </div>
+            <Select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as '' | 'active' | 'inactive')}
+              fullWidth={false}
+              className="w-32"
+            >
+              <option value="">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </Select>
+            <ExportControls
+              kind="authorizedVehicles"
+              fallback="visitors.csv"
+              params={{ list_type: 'visitor', plate: query.trim() || undefined }}
+            />
+          </div>
+        }
+      >
+        {loading ? (
+          <SkeletonTable columns={8} rows={4} />
+        ) : error ? (
+          <p className="py-6 text-center text-sm text-red-600">{error}</p>
+        ) : (
+          <VisitorTable
+            visitors={filtered}
+            onEdit={setEditingVisitor}
+            onConvertToPermanent={setConvertTarget}
+            onRevoke={setRevokeTarget}
+          />
+        )}
+      </Panel>
+
+      {showAddModal && <AddVisitorModal onClose={() => setShowAddModal(false)} onSubmit={handleAdd} />}
+      {editingVisitor && (
+        <EditVisitorModal
+          visitor={editingVisitor}
+          onClose={() => setEditingVisitor(null)}
+          onSubmit={handleEdit}
+        />
+      )}
+      {convertTarget && (
+        <ConfirmDialog
+          title="Convert to Permanent"
+          message={`Move ${convertTarget.plate_number} from visitor access to the permanent whitelist? It will no longer expire.`}
+          confirmLabel="Convert"
+          onConfirm={handleConvertToPermanent}
+          onClose={() => setConvertTarget(null)}
+        />
+      )}
+      {revokeTarget && (
+        <ConfirmDialog
+          title="Revoke Visitor Access"
+          message={`Revoke access for ${revokeTarget.plate_number}? It will no longer be allowed entry.`}
+          confirmLabel="Revoke"
+          danger
+          onConfirm={handleRevoke}
+          onClose={() => setRevokeTarget(null)}
         />
       )}
     </div>
