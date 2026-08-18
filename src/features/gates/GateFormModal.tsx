@@ -85,7 +85,7 @@ export default function GateFormModal({ onClose, onSubmit }: GateFormModalProps)
   return (
     <Modal title="Add Gate" onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-3">
-        <FormField label="Camera ID">
+        <FormField label="Camera ID" required>
           <input
             className={inputClass}
             value={form.camera_id}
@@ -153,7 +153,7 @@ export default function GateFormModal({ onClose, onSubmit }: GateFormModalProps)
         </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <FormField label="Gate ID">
+          <FormField label="Gate ID" required>
             <input
               className={inputClass}
               value={form.gate_id}
@@ -161,7 +161,7 @@ export default function GateFormModal({ onClose, onSubmit }: GateFormModalProps)
               placeholder="e.g. entry"
             />
           </FormField>
-          <FormField label="Gate Name">
+          <FormField label="Gate Name" required>
             <input
               className={inputClass}
               value={form.gate_name}
