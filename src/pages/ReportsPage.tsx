@@ -314,6 +314,13 @@ export default function ReportsPage() {
     setMenuPreset('range');
   };
 
+  const handleCancelExportMenu = () => {
+    setShowExportMenu(false);
+    setMenuPreset('all');
+    setExportCustomFrom('');
+    setExportCustomTo('');
+  };
+
   const handleConfirmExport = async () => {
     setShowExportMenu(false);
     setRangePreset(menuPreset);
@@ -435,11 +442,18 @@ export default function ReportsPage() {
                       />
                     </div>
                   </div>
-                  <div className="border-t border-slate-100 p-2">
+                  <div className="flex gap-1.5 border-t border-slate-100 p-2">
+                    <button
+                      type="button"
+                      onClick={handleCancelExportMenu}
+                      className="flex-1 rounded-md border border-slate-300 px-2 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                    >
+                      Cancel
+                    </button>
                     <button
                       type="button"
                       onClick={handleConfirmExport}
-                      className="flex w-full items-center justify-center gap-1.5 rounded-md bg-blue-600 px-2 py-1.5 text-xs font-medium text-white hover:bg-blue-500"
+                      className="flex flex-1 items-center justify-center gap-1.5 rounded-md bg-blue-600 px-2 py-1.5 text-xs font-medium text-white hover:bg-blue-500"
                     >
                       <Download className="h-3.5 w-3.5" />
                       Export
