@@ -1244,9 +1244,9 @@ function VisitorsTab({ vehicleTypes, fuelTypes }: { vehicleTypes: string[]; fuel
       )}
       {revokeTarget && (
         <ConfirmDialog
-          title="Revoke Visitor Access"
-          message={`Revoke access for ${revokeTarget.plate_number}? It will no longer be allowed entry.`}
-          confirmLabel="Revoke"
+          title="Delete Visitor"
+          message={`Delete ${revokeTarget.plate_number}? It's deactivated, not erased — the record stays intact and this can be reversed by reactivating it. It will no longer be allowed entry.`}
+          confirmLabel="Delete"
           danger
           onConfirm={handleRevoke}
           onClose={() => setRevokeTarget(null)}

@@ -95,7 +95,7 @@ export default function VisitorTable({
                       type="button"
                       onClick={() => onRevoke(v)}
                       className="rounded-md p-1.5 text-red-600 hover:bg-slate-100 hover:text-red-700"
-                      title="Revoke"
+                      title="Delete"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
