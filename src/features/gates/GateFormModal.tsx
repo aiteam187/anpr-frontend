@@ -91,7 +91,7 @@ export default function GateFormModal({ onClose, onSubmit }: GateFormModalProps)
             placeholder="e.g. 192.168.10.214"
           />
         </FormField>
-        <FormField label="Stream Path (optional)">
+        <FormField label="Stream Path">
           <input
             className={inputClass}
             value={form.stream_path ?? ''}
