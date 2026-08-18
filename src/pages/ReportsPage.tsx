@@ -3,6 +3,7 @@ import { ChevronDown, Download } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import Panel from '../components/ui/Panel';
 import Select from '../components/ui/Select';
+import { inputClass } from '../components/ui/FormField';
 import DateRangeDropdown from '../components/ui/DateRangeDropdown';
 import ReportTable, { type ReportColumn } from '../features/reports/ReportTable';
 import { LIST_TYPE_LABELS, LIST_TYPE_STYLES } from '../features/vehicleSearch/listTypeBadge';
@@ -120,6 +121,8 @@ export default function ReportsPage() {
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [exportCustomFrom, setExportCustomFrom] = useState('');
+  const [exportCustomTo, setExportCustomTo] = useState('');
   const exportMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -149,6 +152,8 @@ export default function ReportsPage() {
     setRangePreset('all');
     setCustomFrom('');
     setCustomTo('');
+    setExportCustomFrom('');
+    setExportCustomTo('');
   }, [tab]);
 
   const gateNameByCamId = useMemo(
@@ -291,15 +296,15 @@ export default function ReportsPage() {
   // picking a timeline both runs the export for exactly that range and
   // syncs the on-screen DateRangeDropdown/table filter to match, so what
   // you just downloaded is also what you're now looking at.
-  const handleExportForRange = async (preset: RangeSelection) => {
+  const runExport = async (preset: RangeSelection, from: string, to: string) => {
     setShowExportMenu(false);
     setRangePreset(preset);
-    setCustomFrom('');
-    setCustomTo('');
+    setCustomFrom(from);
+    setCustomTo(to);
     setDownloading(true);
     setError(null);
     try {
-      const range = computeRangeMs(preset, '', '');
+      const range = computeRangeMs(preset, from, to);
       const params: Record<string, string | undefined> = {
         start_date: range.start !== null ? new Date(range.start).toISOString() : undefined,
         end_date: range.end !== null ? new Date(range.end).toISOString() : undefined,
@@ -313,6 +318,12 @@ export default function ReportsPage() {
     } finally {
       setDownloading(false);
     }
+  };
+
+  const handleExportForRange = (preset: RangeSelection) => runExport(preset, '', '');
+  const handleExportCustomRange = () => {
+    if (!exportCustomFrom && !exportCustomTo) return;
+    runExport('range', exportCustomFrom, exportCustomTo);
   };
 
   const EXPORT_MENU_OPTIONS: { value: RangeSelection; label: string }[] = [
@@ -369,7 +380,7 @@ export default function ReportsPage() {
                 <ChevronDown className="h-3.5 w-3.5" />
               </button>
               {showExportMenu && (
-                <div className="absolute right-0 top-full z-20 mt-1 w-40 rounded-md border border-slate-200 bg-white py-1 shadow-lg">
+                <div className="absolute right-0 top-full z-20 mt-1 w-52 rounded-md border border-slate-200 bg-white py-1 shadow-lg">
                   {EXPORT_MENU_OPTIONS.map((opt) => (
                     <button
                       key={opt.value}
@@ -380,6 +391,31 @@ export default function ReportsPage() {
                       {opt.label}
                     </button>
                   ))}
+                  <div className="border-t border-slate-100 p-2">
+                    <p className="mb-1.5 text-xs font-medium text-slate-500">Custom Range</p>
+                    <div className="space-y-1.5">
+                      <input
+                        type="date"
+                        value={exportCustomFrom}
+                        onChange={(e) => setExportCustomFrom(e.target.value)}
+                        className={`${inputClass} text-xs`}
+                      />
+                      <input
+                        type="date"
+                        value={exportCustomTo}
+                        onChange={(e) => setExportCustomTo(e.target.value)}
+                        className={`${inputClass} text-xs`}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleExportCustomRange}
+                        disabled={!exportCustomFrom && !exportCustomTo}
+                        className="w-full rounded-md bg-blue-600 px-2 py-1 text-xs font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Export Range
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
