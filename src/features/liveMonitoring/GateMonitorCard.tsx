@@ -16,7 +16,7 @@ import { LIST_TYPE_LABELS, LIST_TYPE_STYLES } from '../vehicleSearch/listTypeBad
 import { getStreamPathForCamera } from '../../config/cameraStreams';
 import { FULL_CONTENT_RECT, type ContentRect } from '../../utils/videoFrame';
 import { assetUrl } from '../../services/api';
-import { formatElapsed, formatRelativeTime } from '../../utils/format';
+import { formatRelativeTime } from '../../utils/format';
 import type {
   ActiveVehicle,
   HistoryRecord,
@@ -121,11 +121,7 @@ export default function GateMonitorCard({
           )}
         </td>
         <td className="whitespace-nowrap px-3 py-2 text-slate-500">
-          {r.eventType === 'entry' && r.elapsedSeconds !== null
-            ? formatElapsed(r.elapsedSeconds)
-            : r.eventType === 'exit' && r.dwellTime
-              ? r.dwellTime
-              : '—'}
+          {vehicle?.owner_name || '—'}
         </td>
         <td className="whitespace-nowrap px-3 py-2 text-slate-500">{formatRelativeTime(r.time)}</td>
         <td className="px-3 py-2">
@@ -209,7 +205,7 @@ export default function GateMonitorCard({
                   List
                 </th>
                 <th className="whitespace-nowrap px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Dwell Time
+                  Owner Name
                 </th>
                 <th className="whitespace-nowrap px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Time

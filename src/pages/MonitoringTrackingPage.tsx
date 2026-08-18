@@ -280,7 +280,7 @@ export default function MonitoringTrackingPage() {
                     Number Plate
                   </th>
                   <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Employee Name
+                    Vehicle Owner
                   </th>
                   <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Event
