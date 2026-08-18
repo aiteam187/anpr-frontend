@@ -77,6 +77,12 @@ export default function MonitoringTrackingPage() {
     const end = endDate ? new Date(`${endDate}T23:59:59`).getTime() : null;
 
     return allRecords.filter((r) => {
+      // Unregistered plates (no matching AuthorizedVehicle at all) are noise
+      // here — they're not a security event tied to any real record, unlike
+      // blacklisted/deactivated/visitor-denial attempts. The Audit Log page
+      // already captures every attempt; this timeline only needs the ones
+      // that mean something.
+      if (r.eventType === 'unauthorized' && !vehicleByPlate.has(r.plateNumber)) return false;
       if (q && !r.plateNumber.toUpperCase().includes(q)) return false;
       if (eventFilter && r.eventType !== eventFilter) return false;
       if (gateFilter && r.camId !== gateFilter) return false;
@@ -85,7 +91,7 @@ export default function MonitoringTrackingPage() {
       if (end !== null && t > end) return false;
       return true;
     });
-  }, [allRecords, query, eventFilter, gateFilter, startDate, endDate]);
+  }, [allRecords, query, eventFilter, gateFilter, startDate, endDate, vehicleByPlate]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageRecords = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
