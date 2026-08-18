@@ -126,12 +126,16 @@ export default function RoleMasterPage() {
               <tbody>
                 {pageItems.map((role) => {
                   const locked = role.name === 'developer' && currentUser?.role !== 'developer';
+                  const isOwnRole = role.name === currentUser?.role;
                   return (
                   <tr key={role.id} className="border-t border-slate-200">
                     <td className="py-2.5 font-medium capitalize text-slate-900">
                       {role.name}
                       {locked && (
                         <span className="ml-2 text-xs font-normal text-slate-400">(developer-managed only)</span>
+                      )}
+                      {isOwnRole && !locked && (
+                        <span className="ml-2 text-xs font-normal text-slate-400">(your role)</span>
                       )}
                     </td>
                     <td className="py-2.5">
@@ -150,9 +154,9 @@ export default function RoleMasterPage() {
                         <button
                           type="button"
                           onClick={() => setPermissionsFor(role)}
-                          disabled={locked}
+                          disabled={locked || isOwnRole}
                           className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50 disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-transparent"
-                          title="Edit permissions"
+                          title={isOwnRole ? "Can't edit your own role's permissions — use a different account" : 'Edit permissions'}
                         >
                           <KeyRound className="h-3.5 w-3.5" />
                           Permissions
