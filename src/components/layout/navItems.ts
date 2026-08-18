@@ -1,7 +1,6 @@
 import {
   LayoutDashboard,
   Eye,
-  ShieldCheck,
   Users,
   DoorOpen,
   FileText,
@@ -74,15 +73,6 @@ export const navItems: NavItem[] = [
       { to: '/system-health', label: 'System Health', icon: HeartPulse, resource: 'system_health' },
     ],
   },
-  {
-    to: '/users',
-    label: 'Users',
-    icon: UserCog,
-    resource: 'users',
-    children: [
-      { to: '/users/accounts', label: 'Accounts', icon: UserCog },
-      { to: '/users/roles', label: 'Roles & Permissions', icon: ShieldCheck },
-    ],
-  },
+  { to: '/users', label: 'Users', icon: UserCog, resource: 'users' },
   { to: '/settings', label: 'Settings', icon: Settings, resource: 'settings' },
 ];

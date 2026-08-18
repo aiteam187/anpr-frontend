@@ -1,13 +1,18 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
-import { KeyRound, Pencil, Plus, Trash2 } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+import { KeyRound, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import Panel from '../components/ui/Panel';
 import Modal from '../components/ui/Modal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import FormField, { inputClass } from '../components/ui/FormField';
+import Select from '../components/ui/Select';
+import ExportControls from '../components/ui/ExportControls';
 import { SkeletonTable } from '../components/ui/Skeleton';
 import Pagination from '../components/ui/Pagination';
 import { usePagination } from '../hooks/usePagination';
+import UsersTable from '../features/users/UsersTable';
+import UserFormModal, { EditUserModal } from '../features/users/UserFormModal';
+import { createUser, getUsers, updateUser } from '../services/authService';
 import {
   createRole,
   deleteRole,
@@ -16,7 +21,9 @@ import {
   updateRole,
   updateRolePermissions,
 } from '../services/rolesService';
+import { useAuth } from '../context/AuthContext';
 import { usePermissions } from '../context/PermissionsContext';
+import type { UserAccount, UserCreatePayload, UserUpdatePayload } from '../types/auth';
 import type { Role, RolePermissionEntry } from '../types/roles';
 
 const RESOURCE_LABELS: Record<string, string> = {
@@ -36,7 +43,219 @@ const RESOURCE_LABELS: Record<string, string> = {
   developer: 'Developer (DB credentials, webhook URL)',
 };
 
-export default function RoleMasterPage() {
+type Tab = 'accounts' | 'roles';
+
+const TABS: { key: Tab; label: string }[] = [
+  { key: 'accounts', label: 'Accounts' },
+  { key: 'roles', label: 'Roles & Permissions' },
+];
+
+export default function UserMasterPage() {
+  const [tab, setTab] = useState<Tab>('accounts');
+
+  return (
+    <div className="space-y-4">
+      <PageHeader
+        title="Users"
+        description="Dashboard login accounts and the role/permission matrix that governs what each one can view or manage"
+      />
+
+      <div className="flex gap-1 border-b border-slate-200">
+        {TABS.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => setTab(t.key)}
+            className={`px-3 py-2 text-sm font-medium transition-colors ${
+              tab === t.key
+                ? 'border-b-2 border-blue-600 text-blue-600'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'accounts' && <AccountsTab />}
+      {tab === 'roles' && <RolesTab />}
+    </div>
+  );
+}
+
+function AccountsTab() {
+  const { token, user: currentUser, updateUser: updateAuthUser } = useAuth();
+  const { role: currentUserRole } = usePermissions();
+  const [users, setUsers] = useState<UserAccount[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserAccount | null>(null);
+  const [query, setQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'' | 'active' | 'inactive'>('');
+
+  const refresh = useCallback(async () => {
+    if (!token) return;
+    try {
+      const res = await getUsers(token);
+      setUsers(res);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load users');
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  useEffect(() => {
+    getRoles()
+      .then(setRoles)
+      .catch(() => {});
+  }, []);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toUpperCase();
+    return users.filter((u) => {
+      if (roleFilter && u.role !== roleFilter) return false;
+      if (statusFilter === 'active' && !u.is_active) return false;
+      if (statusFilter === 'inactive' && u.is_active) return false;
+      if (!q) return true;
+      return u.username.toUpperCase().includes(q) || u.full_name.toUpperCase().includes(q);
+    });
+  }, [users, query, roleFilter, statusFilter]);
+
+  const { page, setPage, totalPages, pageItems, rangeStart, rangeEnd, totalCount, onPrev, onNext } =
+    usePagination(filtered);
+
+  useEffect(() => {
+    setPage(1);
+  }, [query, roleFilter, statusFilter, setPage]);
+
+  const handleCreate = async (payload: UserCreatePayload) => {
+    if (!token) return;
+    await createUser(token, payload);
+    setShowAddModal(false);
+    await refresh();
+  };
+
+  const handleUpdate = async (payload: UserUpdatePayload) => {
+    if (!token || !editingUser) return;
+    await updateUser(token, editingUser.id, payload);
+    // Editing your own account doesn't re-run login, so the navbar's cached
+    // name/role would otherwise keep showing whatever was true at login
+    // until the next one — patch the live session here instead.
+    if (currentUser && editingUser.id === currentUser.id) {
+      updateAuthUser({
+        ...(payload.full_name != null && { full_name: payload.full_name }),
+        ...(payload.role != null && { role: payload.role }),
+      });
+    }
+    setEditingUser(null);
+    await refresh();
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() => setShowAddModal(true)}
+          className="flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500"
+        >
+          <Plus className="h-4 w-4" />
+          Add User
+        </button>
+      </div>
+
+      <Panel
+        title={`Users (${filtered.length})`}
+        action={
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+              <input
+                className={`${inputClass} w-56 py-1 pl-7 text-xs`}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Username or full name…"
+              />
+            </div>
+            <Select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} fullWidth={false} className="w-32">
+              <option value="">All Roles</option>
+              {roles.map((r) => (
+                <option key={r.id} value={r.name} className="capitalize">
+                  {r.name}
+                </option>
+              ))}
+            </Select>
+            <Select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as '' | 'active' | 'inactive')}
+              fullWidth={false}
+              className="w-32"
+            >
+              <option value="">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </Select>
+            <ExportControls
+              kind="users"
+              fallback="users.csv"
+              params={{
+                role: roleFilter || undefined,
+                is_active: statusFilter ? String(statusFilter === 'active') : undefined,
+                search: query.trim() || undefined,
+              }}
+            />
+          </div>
+        }
+      >
+        {loading ? (
+          <SkeletonTable columns={6} rows={2} />
+        ) : error ? (
+          <p className="py-6 text-center text-sm text-red-600">{error}</p>
+        ) : (
+          <>
+            <UsersTable
+              users={pageItems}
+              currentUserId={currentUser?.id}
+              currentUserRole={currentUserRole ?? undefined}
+              onEdit={setEditingUser}
+            />
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              rangeStart={rangeStart}
+              rangeEnd={rangeEnd}
+              totalCount={totalCount}
+              onPrev={onPrev}
+              onNext={onNext}
+            />
+          </>
+        )}
+      </Panel>
+
+      {showAddModal && (
+        <UserFormModal onClose={() => setShowAddModal(false)} onSubmit={handleCreate} />
+      )}
+      {editingUser && (
+        <EditUserModal
+          user={editingUser}
+          onClose={() => setEditingUser(null)}
+          onSubmit={handleUpdate}
+        />
+      )}
+    </div>
+  );
+}
+
+function RolesTab() {
   const { role: currentUserRole, refresh: refreshPermissions } = usePermissions();
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
@@ -97,11 +316,6 @@ export default function RoleMasterPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader
-        title="Roles & Permissions"
-        description="Dashboard login roles and the permission matrix that governs what each one can view or manage"
-      />
-
       <div className="flex justify-end">
         <button
           type="button"

@@ -11,8 +11,7 @@ const ReportsPage = lazy(() => import('../pages/ReportsPage'));
 const SettingsPage = lazy(() => import('../pages/SettingsPage'));
 const MonitoringLivePage = lazy(() => import('../pages/MonitoringLivePage'));
 const MonitoringTrackingPage = lazy(() => import('../pages/MonitoringTrackingPage'));
-const UsersPage = lazy(() => import('../pages/UsersPage'));
-const RoleMasterPage = lazy(() => import('../pages/RoleMasterPage'));
+const UserMasterPage = lazy(() => import('../pages/UserMasterPage'));
 const ActivityLogPage = lazy(() => import('../pages/ActivityLogPage'));
 const AlarmsPage = lazy(() => import('../pages/AlarmsPage'));
 const SystemHealthPage = lazy(() => import('../pages/SystemHealthPage'));
@@ -60,9 +59,9 @@ export default function AppRoutes() {
         <Route path="/analytics" element={<RequirePermission resource="analytics"><AnalyticsPage /></RequirePermission>} />
         <Route path="/alarms" element={<RequirePermission resource="alarms"><AlarmsPage /></RequirePermission>} />
         <Route path="/system-health" element={<RequirePermission resource="system_health"><SystemHealthPage /></RequirePermission>} />
-        <Route path="/users" element={<Navigate to="/users/accounts" replace />} />
-        <Route path="/users/accounts" element={<RequirePermission resource="users"><UsersPage /></RequirePermission>} />
-        <Route path="/users/roles" element={<RequirePermission resource="users"><RoleMasterPage /></RequirePermission>} />
+        <Route path="/users" element={<RequirePermission resource="users"><UserMasterPage /></RequirePermission>} />
+        <Route path="/users/accounts" element={<Navigate to="/users" replace />} />
+        <Route path="/users/roles" element={<Navigate to="/users" replace />} />
         <Route path="/audit-logs" element={<RequirePermission resource="audit_logs"><ActivityLogPage /></RequirePermission>} />
         <Route path="/settings" element={<RequirePermission resource="settings"><SettingsPage /></RequirePermission>} />
       </Routes>
