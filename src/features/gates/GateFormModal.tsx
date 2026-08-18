@@ -91,15 +91,6 @@ export default function GateFormModal({ onClose, onSubmit }: GateFormModalProps)
             placeholder="e.g. 192.168.10.214"
           />
         </FormField>
-        <FormField label="Stream Path">
-          <input
-            className={inputClass}
-            value={form.stream_path ?? ''}
-            onChange={(e) => update('stream_path', e.target.value)}
-            placeholder="e.g. stream1 — the MediaMTX path name for this camera's live view"
-          />
-        </FormField>
-
         <div>
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
             Live View (optional) — leave blank to skip streaming for this camera
