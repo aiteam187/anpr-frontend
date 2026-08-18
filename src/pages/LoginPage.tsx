@@ -36,8 +36,8 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
       <div className="w-full max-w-sm">
-        <div className="mb-8 flex justify-center">
-          <img src={anprLogo} alt="Gate Vision" className="h-16 w-auto" />
+        <div className="mb-3 flex justify-center">
+          <img src={anprLogo} alt="Gate Vision" className="h-20 w-auto" />
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
