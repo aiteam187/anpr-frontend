@@ -257,8 +257,8 @@ export default function Header({ onOpenMobileSidebar }: HeaderProps) {
             <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-600">
               <User className="h-3.5 w-3.5 text-white" />
             </div>
-            <span className="hidden text-xs font-medium text-slate-700 sm:inline">
-              {user?.full_name ?? 'Account'}
+            <span className="hidden text-xs font-medium capitalize text-slate-700 sm:inline">
+              {user?.role ?? 'Account'}
             </span>
           </button>
 
