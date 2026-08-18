@@ -99,7 +99,7 @@ export default function VisitorTable({
                       className={`rounded-md p-1.5 hover:bg-slate-100 ${
                         v.is_active ? 'text-amber-600 hover:text-amber-700' : 'text-emerald-600 hover:text-emerald-700'
                       }`}
-                      title={v.is_active ? 'Revoke' : 'Approve'}
+                      title={v.is_active ? 'Inactive' : 'Active'}
                     >
                       <Power className="h-4 w-4" />
                     </button>

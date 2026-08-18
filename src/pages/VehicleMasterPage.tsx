@@ -1262,13 +1262,13 @@ function VisitorsTab({ vehicleTypes, fuelTypes }: { vehicleTypes: string[]; fuel
       )}
       {toggleTarget && (
         <ConfirmDialog
-          title={toggleTarget.is_active ? 'Revoke Visitor' : 'Approve Visitor'}
+          title={toggleTarget.is_active ? 'Mark Visitor Inactive' : 'Mark Visitor Active'}
           message={
             toggleTarget.is_active
-              ? `Revoke ${toggleTarget.plate_number}? They won't be able to enter or exit until approved again.`
-              : `Approve ${toggleTarget.plate_number}? They'll be able to enter and exit again.`
+              ? `Mark ${toggleTarget.plate_number} as Inactive? They won't be able to enter or exit until marked Active again.`
+              : `Mark ${toggleTarget.plate_number} as Active? They'll be able to enter and exit again.`
           }
-          confirmLabel={toggleTarget.is_active ? 'Revoke' : 'Approve'}
+          confirmLabel={toggleTarget.is_active ? 'Inactive' : 'Active'}
           danger={toggleTarget.is_active}
           onConfirm={handleToggleActive}
           onClose={() => setToggleTarget(null)}
