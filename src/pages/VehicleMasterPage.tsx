@@ -452,8 +452,13 @@ function VehiclesTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
                           <button
                             type="button"
                             onClick={() => setDeleteTarget(v)}
-                            className="rounded-md p-1.5 text-red-600 hover:bg-slate-100 hover:text-red-700"
-                            title="Delete"
+                            disabled={v.is_active}
+                            className={`rounded-md p-1.5 ${
+                              v.is_active
+                                ? 'cursor-not-allowed text-slate-300'
+                                : 'text-red-600 hover:bg-slate-100 hover:text-red-700'
+                            }`}
+                            title={v.is_active ? 'Deactivate first, then Delete' : 'Delete'}
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
@@ -782,8 +787,13 @@ function AllowlistTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
                         <button
                           type="button"
                           onClick={() => setDeleteTarget(v)}
-                          className="rounded-md p-1.5 text-red-600 hover:bg-slate-100 hover:text-red-700"
-                          title="Delete"
+                          disabled={v.is_active}
+                          className={`rounded-md p-1.5 ${
+                            v.is_active
+                              ? 'cursor-not-allowed text-slate-300'
+                              : 'text-red-600 hover:bg-slate-100 hover:text-red-700'
+                          }`}
+                          title={v.is_active ? 'Deactivate first, then Delete' : 'Delete'}
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>

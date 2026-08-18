@@ -289,8 +289,13 @@ function EmployeesTab() {
                         <button
                           type="button"
                           onClick={() => setDeleteTarget(employee)}
-                          className="rounded-md p-1.5 text-red-600 hover:bg-slate-100 hover:text-red-700"
-                          title="Delete"
+                          disabled={employee.enabled}
+                          className={`rounded-md p-1.5 ${
+                            employee.enabled
+                              ? 'cursor-not-allowed text-slate-300'
+                              : 'text-red-600 hover:bg-slate-100 hover:text-red-700'
+                          }`}
+                          title={employee.enabled ? 'Disable first, then Delete' : 'Delete'}
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
