@@ -298,6 +298,8 @@ function RoleFormModal({ title, submitLabel, initialName, onClose, onSubmit }: R
 }
 
 function PermissionsMatrixModal({ role, onClose }: { role: Role; onClose: () => void }) {
+  const { user: currentUser } = useAuth();
+  const isOwnRole = role.name === currentUser?.role;
   const [grid, setGrid] = useState<RolePermissionEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -359,14 +361,25 @@ function PermissionsMatrixModal({ role, onClose }: { role: Role; onClose: () => 
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {grid.map((entry) => {
-                  const locked = entry.resource === 'developer';
+                  const devLocked = entry.resource === 'developer';
+                  // Revoking your OWN role's "manage Users" would lock you
+                  // out mid-save (permissions are always checked live, not
+                  // cached) — the backend rejects it too, this just avoids
+                  // the round-trip error.
+                  const selfLocked = isOwnRole && entry.resource === 'users' && entry.can_manage;
+                  const locked = devLocked || selfLocked;
                   return (
                     <tr key={entry.resource} className="bg-white">
                       <td className="px-4 py-2.5 text-slate-700">
                         {RESOURCE_LABELS[entry.resource] ?? entry.resource}
-                        {locked && (
+                        {devLocked && (
                           <span className="ml-2 text-xs font-normal text-slate-400">
                             (locked — not editable here)
+                          </span>
+                        )}
+                        {selfLocked && (
+                          <span className="ml-2 text-xs font-normal text-slate-400">
+                            (can't revoke your own manage access)
                           </span>
                         )}
                       </td>
@@ -374,7 +387,7 @@ function PermissionsMatrixModal({ role, onClose }: { role: Role; onClose: () => 
                         <input
                           type="checkbox"
                           checked={entry.can_view}
-                          disabled={locked}
+                          disabled={devLocked}
                           onChange={() => toggle(entry.resource, 'can_view')}
                           className="rounded border-slate-300 disabled:cursor-not-allowed disabled:opacity-40"
                         />
