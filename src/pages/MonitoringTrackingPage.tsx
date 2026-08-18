@@ -310,14 +310,20 @@ export default function MonitoringTrackingPage() {
                         )}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-slate-600">
-                        {gate ? `${gate.gate_name} (${gate.direction})` : r.camId}
+                        {gate ? gate.gate_name : r.camId}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-slate-500">
-                        {r.eventType === 'entry' && r.elapsedSeconds !== null
-                          ? formatElapsed(r.elapsedSeconds)
-                          : r.eventType === 'exit' && r.dwellTime
-                            ? r.dwellTime
-                            : '—'}
+                      <td className="whitespace-nowrap px-4 py-3">
+                        {r.eventType === 'entry' && r.elapsedSeconds !== null ? (
+                          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                            {formatElapsed(r.elapsedSeconds)} (ongoing)
+                          </span>
+                        ) : r.eventType === 'exit' && r.dwellTime ? (
+                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                            {r.dwellTime}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-slate-500">
                         {formatDateTime(r.time)}
