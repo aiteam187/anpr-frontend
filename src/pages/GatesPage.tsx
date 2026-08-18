@@ -9,6 +9,8 @@ import { SkeletonTable } from '../components/ui/Skeleton';
 import { inputClass } from '../components/ui/FormField';
 import Select from '../components/ui/Select';
 import ExportControls from '../components/ui/ExportControls';
+import Pagination from '../components/ui/Pagination';
+import { usePagination } from '../hooks/usePagination';
 import { createGate, deleteGate, getGates, updateGate } from '../services/gatesService';
 import type { GateConfig, GateConfigCreatePayload, GateConfigUpdatePayload } from '../types/gate';
 
@@ -103,6 +105,13 @@ export default function GatesPage() {
     });
   }, [gates, query, enabledFilter, directionFilter]);
 
+  const { page, setPage, totalPages, pageItems, rangeStart, rangeEnd, totalCount, onPrev, onNext } =
+    usePagination(filtered);
+
+  useEffect(() => {
+    setPage(1);
+  }, [query, enabledFilter, directionFilter, setPage]);
+
   return (
     <div className="space-y-4">
       <PageHeader title="Gate Master" description="Cameras, gates, and relay wiring" />
@@ -167,12 +176,23 @@ export default function GatesPage() {
         ) : error ? (
           <p className="py-6 text-center text-sm text-red-600">{error}</p>
         ) : (
-          <GatesTable
-            gates={filtered}
-            onEdit={setEditingGate}
-            onToggleEnabled={setToggleTarget}
-            onDelete={setDeleteTarget}
-          />
+          <>
+            <GatesTable
+              gates={pageItems}
+              onEdit={setEditingGate}
+              onToggleEnabled={setToggleTarget}
+              onDelete={setDeleteTarget}
+            />
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              rangeStart={rangeStart}
+              rangeEnd={rangeEnd}
+              totalCount={totalCount}
+              onPrev={onPrev}
+              onNext={onNext}
+            />
+          </>
         )}
       </Panel>
 

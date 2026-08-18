@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Eye, Filter, Search } from 'lucide-react';
+import { Eye, Filter, Search } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import Panel from '../components/ui/Panel';
 import FormField, { inputClass } from '../components/ui/FormField';
@@ -7,6 +7,7 @@ import Select from '../components/ui/Select';
 import ImageLightbox from '../components/ui/ImageLightbox';
 import ExportControls from '../components/ui/ExportControls';
 import DateRangeDropdown from '../components/ui/DateRangeDropdown';
+import Pagination from '../components/ui/Pagination';
 import ActivityDetailModal from '../features/liveMonitoring/ActivityDetailModal';
 import {
   buildActivityRecords,
@@ -332,36 +333,15 @@ export default function MonitoringTrackingPage() {
             </table>
           </div>
 
-          {filtered.length > 0 && (
-            <div className="mt-3 flex items-center justify-between text-sm">
-              <p className="text-slate-500">
-                Showing {rangeStart}–{rangeEnd} of {filtered.length}
-              </p>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page <= 1}
-                  className="flex items-center gap-1 rounded-md border border-slate-300 px-2.5 py-1.5 text-slate-600 hover:bg-slate-50 disabled:opacity-40"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  Prev
-                </button>
-                <span className="text-slate-500">
-                  Page {page} of {totalPages}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page >= totalPages}
-                  className="flex items-center gap-1 rounded-md border border-slate-300 px-2.5 py-1.5 text-slate-600 hover:bg-slate-50 disabled:opacity-40"
-                >
-                  Next
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          )}
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            rangeStart={rangeStart}
+            rangeEnd={rangeEnd}
+            totalCount={filtered.length}
+            onPrev={() => setPage((p) => Math.max(1, p - 1))}
+            onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
+          />
         </Panel>
       )}
 

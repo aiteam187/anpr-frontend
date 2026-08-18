@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { inputClass } from '../../components/ui/FormField';
 import { SkeletonTable } from '../../components/ui/Skeleton';
-
-const PAGE_SIZE = 20;
+import Pagination from '../../components/ui/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 
 export interface ReportColumn<T> {
   header: string;
@@ -35,7 +35,6 @@ export default function ReportTable<T>({
 }: ReportTableProps<T>) {
   const [allItems, setAllItems] = useState<T[]>([]);
   const [query, setQuery] = useState('');
-  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -60,13 +59,8 @@ export default function ReportTable<T>({
   }, [fetcher]);
 
   useEffect(() => {
-    setPage(1);
     setQuery('');
   }, [fetcher]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [filter]);
 
   const items = useMemo(() => {
     let result = filter ? allItems.filter(filter) : allItems;
@@ -77,10 +71,13 @@ export default function ReportTable<T>({
     return result;
   }, [allItems, query, getSearchText, filter]);
 
-  const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
-  const pageItems = items.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-  const rangeStart = items.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
-  const rangeEnd = Math.min(page * PAGE_SIZE, items.length);
+  const { page, setPage, totalPages, pageItems, rangeStart, rangeEnd, totalCount, onPrev, onNext } =
+    usePagination(items);
+
+  useEffect(() => {
+    setPage(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetcher, filter]);
 
   if (loading) return <SkeletonTable columns={columns.length} rows={8} />;
   if (error) return <p className="py-6 text-center text-sm text-red-600">{error}</p>;
@@ -141,36 +138,15 @@ export default function ReportTable<T>({
         </table>
       </div>
 
-      {items.length > 0 && (
-        <div className="mt-3 flex items-center justify-between text-sm">
-          <p className="text-slate-500">
-            Showing {rangeStart}–{rangeEnd} of {items.length}
-          </p>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1}
-              className="flex items-center gap-1 rounded-md border border-slate-300 px-2.5 py-1.5 text-slate-600 hover:bg-slate-50 disabled:opacity-40"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              Prev
-            </button>
-            <span className="text-slate-500">
-              Page {page} of {totalPages}
-            </span>
-            <button
-              type="button"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page >= totalPages}
-              className="flex items-center gap-1 rounded-md border border-slate-300 px-2.5 py-1.5 text-slate-600 hover:bg-slate-50 disabled:opacity-40"
-            >
-              Next
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      )}
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        rangeStart={rangeStart}
+        rangeEnd={rangeEnd}
+        totalCount={totalCount}
+        onPrev={onPrev}
+        onNext={onNext}
+      />
     </>
   );
 }

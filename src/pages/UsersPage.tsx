@@ -7,6 +7,8 @@ import { SkeletonTable } from '../components/ui/Skeleton';
 import { inputClass } from '../components/ui/FormField';
 import Select from '../components/ui/Select';
 import ExportControls from '../components/ui/ExportControls';
+import Pagination from '../components/ui/Pagination';
+import { usePagination } from '../hooks/usePagination';
 import UserFormModal, { EditUserModal } from '../features/users/UserFormModal';
 import { createUser, getUsers, updateUser } from '../services/authService';
 import { getRoles } from '../services/rolesService';
@@ -59,6 +61,13 @@ export default function UsersPage() {
       return u.username.toUpperCase().includes(q) || u.full_name.toUpperCase().includes(q);
     });
   }, [users, query, roleFilter, statusFilter]);
+
+  const { page, setPage, totalPages, pageItems, rangeStart, rangeEnd, totalCount, onPrev, onNext } =
+    usePagination(filtered);
+
+  useEffect(() => {
+    setPage(1);
+  }, [query, roleFilter, statusFilter, setPage]);
 
   const handleCreate = async (payload: UserCreatePayload) => {
     if (!token) return;
@@ -137,7 +146,18 @@ export default function UsersPage() {
         ) : error ? (
           <p className="py-6 text-center text-sm text-red-600">{error}</p>
         ) : (
-          <UsersTable users={filtered} currentUserId={currentUser?.id} onEdit={setEditingUser} />
+          <>
+            <UsersTable users={pageItems} currentUserId={currentUser?.id} onEdit={setEditingUser} />
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              rangeStart={rangeStart}
+              rangeEnd={rangeEnd}
+              totalCount={totalCount}
+              onPrev={onPrev}
+              onNext={onNext}
+            />
+          </>
         )}
       </Panel>
 

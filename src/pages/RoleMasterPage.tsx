@@ -6,6 +6,8 @@ import Modal from '../components/ui/Modal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import FormField, { inputClass } from '../components/ui/FormField';
 import { SkeletonTable } from '../components/ui/Skeleton';
+import Pagination from '../components/ui/Pagination';
+import { usePagination } from '../hooks/usePagination';
 import {
   createRole,
   deleteRole,
@@ -40,6 +42,9 @@ export default function RoleMasterPage() {
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Role | null>(null);
   const [permissionsFor, setPermissionsFor] = useState<Role | null>(null);
+
+  const { page, totalPages, pageItems, rangeStart, rangeEnd, totalCount, onPrev, onNext } =
+    usePagination(roles);
 
   const refresh = useCallback(async () => {
     try {
@@ -116,7 +121,7 @@ export default function RoleMasterPage() {
                 </tr>
               </thead>
               <tbody>
-                {roles.map((role) => (
+                {pageItems.map((role) => (
                   <tr key={role.id} className="border-t border-slate-200">
                     <td className="py-2.5 font-medium capitalize text-slate-900">{role.name}</td>
                     <td className="py-2.5">
@@ -172,6 +177,15 @@ export default function RoleMasterPage() {
             </table>
           </div>
         )}
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          rangeStart={rangeStart}
+          rangeEnd={rangeEnd}
+          totalCount={totalCount}
+          onPrev={onPrev}
+          onNext={onNext}
+        />
       </Panel>
 
       {showAddModal && (

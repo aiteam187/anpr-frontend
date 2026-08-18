@@ -7,6 +7,8 @@ import { SkeletonTable } from '../components/ui/Skeleton';
 import { inputClass } from '../components/ui/FormField';
 import Select from '../components/ui/Select';
 import ExportControls from '../components/ui/ExportControls';
+import Pagination from '../components/ui/Pagination';
+import { usePagination } from '../hooks/usePagination';
 import VehicleDetailsModal from '../features/whitelist/VehicleDetailsModal';
 import AddVehicleModal from '../features/whitelist/AddVehicleModal';
 import BulkUploadModal from '../features/whitelist/BulkUploadModal';
@@ -222,6 +224,13 @@ function VehiclesTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
     });
   }, [vehicles, query, listTypeFilter]);
 
+  const { page, setPage, totalPages, pageItems, rangeStart, rangeEnd, totalCount, onPrev, onNext } =
+    usePagination(filtered);
+
+  useEffect(() => {
+    setPage(1);
+  }, [query, listTypeFilter, setPage]);
+
   const handleSaveDetails = async (payload: Parameters<typeof updateVehicleDetails>[1]) => {
     if (!editingVehicle) return;
     await updateVehicleDetails(editingVehicle.plate_number, payload);
@@ -336,14 +345,14 @@ function VehiclesTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
                 </tr>
               </thead>
               <tbody>
-                {filtered.length === 0 && (
+                {pageItems.length === 0 && (
                   <tr>
                     <td colSpan={8} className="py-6 text-center text-slate-400">
                       No vehicles found
                     </td>
                   </tr>
                 )}
-                {filtered.map((v) => (
+                {pageItems.map((v) => (
                   <tr key={v.plate_number} className="border-t border-slate-200">
                     <td className="py-2.5 font-mono font-semibold text-slate-900">
                       {v.plate_number}
@@ -435,6 +444,15 @@ function VehiclesTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
             </table>
           </div>
         )}
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          rangeStart={rangeStart}
+          rangeEnd={rangeEnd}
+          totalCount={totalCount}
+          onPrev={onPrev}
+          onNext={onNext}
+        />
       </Panel>
 
       {showAddModal && (
@@ -549,6 +567,13 @@ function AllowlistTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
     );
   }, [vehicles, query]);
 
+  const { page, setPage, totalPages, pageItems, rangeStart, rangeEnd, totalCount, onPrev, onNext } =
+    usePagination(filtered);
+
+  useEffect(() => {
+    setPage(1);
+  }, [query, setPage]);
+
   const handleSaveDetails = async (payload: Parameters<typeof updateVehicleDetails>[1]) => {
     if (!editingVehicle) return;
     await updateVehicleDetails(editingVehicle.plate_number, payload);
@@ -643,14 +668,14 @@ function AllowlistTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
                 </tr>
               </thead>
               <tbody>
-                {filtered.length === 0 && (
+                {pageItems.length === 0 && (
                   <tr>
                     <td colSpan={7} className="py-6 text-center text-slate-400">
                       No allowlisted vehicles
                     </td>
                   </tr>
                 )}
-                {filtered.map((v) => (
+                {pageItems.map((v) => (
                   <tr key={v.plate_number} className="border-t border-slate-200">
                     <td className="py-2.5 font-mono font-semibold text-slate-900">{v.plate_number}</td>
                     <td className="py-2.5 text-slate-600">{v.owner_name || '—'}</td>
@@ -721,6 +746,15 @@ function AllowlistTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
             </table>
           </div>
         )}
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          rangeStart={rangeStart}
+          rangeEnd={rangeEnd}
+          totalCount={totalCount}
+          onPrev={onPrev}
+          onNext={onNext}
+        />
       </Panel>
 
       {showAddModal && (
@@ -812,6 +846,13 @@ function BlacklistTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
     );
   }, [vehicles, query]);
 
+  const { page, setPage, totalPages, pageItems, rangeStart, rangeEnd, totalCount, onPrev, onNext } =
+    usePagination(filtered);
+
+  useEffect(() => {
+    setPage(1);
+  }, [query, setPage]);
+
   const handleSaveDetails = async (payload: Parameters<typeof updateVehicleDetails>[1]) => {
     if (!editingVehicle) return;
     await updateVehicleDetails(editingVehicle.plate_number, payload);
@@ -867,14 +908,14 @@ function BlacklistTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
                 </tr>
               </thead>
               <tbody>
-                {filtered.length === 0 && (
+                {pageItems.length === 0 && (
                   <tr>
                     <td colSpan={6} className="py-6 text-center text-slate-400">
                       No blacklisted vehicles
                     </td>
                   </tr>
                 )}
-                {filtered.map((v) => (
+                {pageItems.map((v) => (
                   <tr key={v.plate_number} className="border-t border-slate-200">
                     <td className="py-2.5 font-mono font-semibold text-slate-900">{v.plate_number}</td>
                     <td className="py-2.5 text-slate-600">{v.owner_name || '—'}</td>
@@ -920,6 +961,15 @@ function BlacklistTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
             </table>
           </div>
         )}
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          rangeStart={rangeStart}
+          rangeEnd={rangeEnd}
+          totalCount={totalCount}
+          onPrev={onPrev}
+          onNext={onNext}
+        />
       </Panel>
 
       {viewingVehicle && (
@@ -989,6 +1039,13 @@ function VisitorsTab({ vehicleTypes, fuelTypes }: { vehicleTypes: string[]; fuel
       );
     });
   }, [visitors, query, statusFilter]);
+
+  const { page, setPage, totalPages, pageItems, rangeStart, rangeEnd, totalCount, onPrev, onNext } =
+    usePagination(filtered);
+
+  useEffect(() => {
+    setPage(1);
+  }, [query, statusFilter, setPage]);
 
   const handleAdd = async (input: NewVisitorInput) => {
     await addAuthorizedVehicle({ plate_number: input.plateNumber });
@@ -1081,12 +1138,23 @@ function VisitorsTab({ vehicleTypes, fuelTypes }: { vehicleTypes: string[]; fuel
         ) : error ? (
           <p className="py-6 text-center text-sm text-red-600">{error}</p>
         ) : (
-          <VisitorTable
-            visitors={filtered}
-            onEdit={setEditingVisitor}
-            onConvertToPermanent={setConvertTarget}
-            onRevoke={setRevokeTarget}
-          />
+          <>
+            <VisitorTable
+              visitors={pageItems}
+              onEdit={setEditingVisitor}
+              onConvertToPermanent={setConvertTarget}
+              onRevoke={setRevokeTarget}
+            />
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              rangeStart={rangeStart}
+              rangeEnd={rangeEnd}
+              totalCount={totalCount}
+              onPrev={onPrev}
+              onNext={onNext}
+            />
+          </>
         )}
       </Panel>
 

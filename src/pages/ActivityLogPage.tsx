@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, ClipboardList, Download, Filter, Search } from 'lucide-react';
+import { ClipboardList, Download, Filter, Search } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import Panel from '../components/ui/Panel';
 import FormField, { inputClass } from '../components/ui/FormField';
 import Select from '../components/ui/Select';
 import { SkeletonTable } from '../components/ui/Skeleton';
 import DateRangeDropdown from '../components/ui/DateRangeDropdown';
+import Pagination from '../components/ui/Pagination';
 import { categoryLabel, categoryStyle } from '../features/activityLog/categoryMeta';
 import { getActivityLog } from '../services/activityLogService';
 import { downloadExport, type ExportFormat } from '../services/exportsService';
@@ -18,7 +19,7 @@ const FORMAT_OPTIONS: { value: ExportFormat; label: string }[] = [
   { value: 'pdf', label: 'PDF' },
 ];
 
-const PAGE_SIZE = 25;
+const PAGE_SIZE = 20;
 
 const ZONE_KEYS = ['x0', 'y0', 'x1', 'y1', 'x2', 'y2', 'x3', 'y3'] as const;
 
@@ -321,36 +322,15 @@ export default function ActivityLogPage() {
               </table>
             </div>
 
-            <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
-              <span>
-                {totalCount === 0
-                  ? 'No results'
-                  : `Showing ${offset + 1}-${Math.min(offset + PAGE_SIZE, totalCount)} of ${totalCount}`}
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setOffset((prev) => Math.max(0, prev - PAGE_SIZE))}
-                  disabled={offset === 0}
-                  className="flex items-center gap-1 rounded-md border border-slate-300 px-2 py-1 text-slate-600 hover:bg-slate-50 disabled:opacity-40"
-                >
-                  <ChevronLeft className="h-3.5 w-3.5" />
-                  Prev
-                </button>
-                <span>
-                  Page {page} of {totalPages}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setOffset((prev) => prev + PAGE_SIZE)}
-                  disabled={offset + PAGE_SIZE >= totalCount}
-                  className="flex items-center gap-1 rounded-md border border-slate-300 px-2 py-1 text-slate-600 hover:bg-slate-50 disabled:opacity-40"
-                >
-                  Next
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            </div>
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              rangeStart={totalCount === 0 ? 0 : offset + 1}
+              rangeEnd={Math.min(offset + PAGE_SIZE, totalCount)}
+              totalCount={totalCount}
+              onPrev={() => setOffset((prev) => Math.max(0, prev - PAGE_SIZE))}
+              onNext={() => setOffset((prev) => prev + PAGE_SIZE)}
+            />
           </>
         )}
       </Panel>

@@ -7,6 +7,8 @@ import { inputClass } from '../components/ui/FormField';
 import Select from '../components/ui/Select';
 import ExportControls from '../components/ui/ExportControls';
 import { SkeletonTable } from '../components/ui/Skeleton';
+import Pagination from '../components/ui/Pagination';
+import { usePagination } from '../hooks/usePagination';
 import VisitorTable from '../features/visitors/VisitorTable';
 import AddVisitorModal, { type NewVisitorInput } from '../features/visitors/AddVisitorModal';
 import EditVisitorModal, { type VisitorEditInput } from '../features/visitors/EditVisitorModal';
@@ -117,6 +119,13 @@ export default function VisitorsPage() {
     });
   }, [visitors, query, statusFilter]);
 
+  const { page, setPage, totalPages, pageItems, rangeStart, rangeEnd, totalCount, onPrev, onNext } =
+    usePagination(filtered);
+
+  useEffect(() => {
+    setPage(1);
+  }, [query, statusFilter, setPage]);
+
   return (
     <div className="space-y-4">
       <PageHeader
@@ -171,12 +180,23 @@ export default function VisitorsPage() {
         ) : error ? (
           <p className="py-6 text-center text-sm text-red-600">{error}</p>
         ) : (
-          <VisitorTable
-            visitors={filtered}
-            onEdit={setEditingVisitor}
-            onConvertToPermanent={setConvertTarget}
-            onRevoke={setRevokeTarget}
-          />
+          <>
+            <VisitorTable
+              visitors={pageItems}
+              onEdit={setEditingVisitor}
+              onConvertToPermanent={setConvertTarget}
+              onRevoke={setRevokeTarget}
+            />
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              rangeStart={rangeStart}
+              rangeEnd={rangeEnd}
+              totalCount={totalCount}
+              onPrev={onPrev}
+              onNext={onNext}
+            />
+          </>
         )}
       </Panel>
 

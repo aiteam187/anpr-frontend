@@ -7,6 +7,8 @@ import { SkeletonTable } from '../components/ui/Skeleton';
 import { inputClass } from '../components/ui/FormField';
 import Select from '../components/ui/Select';
 import ExportControls from '../components/ui/ExportControls';
+import Pagination from '../components/ui/Pagination';
+import { usePagination } from '../hooks/usePagination';
 import SimpleMasterPage from '../features/masters/SimpleMasterPage';
 import EmployeeFormModal from '../features/masters/EmployeeFormModal';
 import {
@@ -150,6 +152,13 @@ function EmployeesTab() {
     });
   }, [employees, query, departmentFilter, statusFilter]);
 
+  const { page, setPage, totalPages, pageItems, rangeStart, rangeEnd, totalCount, onPrev, onNext } =
+    usePagination(filtered);
+
+  useEffect(() => {
+    setPage(1);
+  }, [query, departmentFilter, statusFilter, setPage]);
+
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
@@ -230,14 +239,14 @@ function EmployeesTab() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.length === 0 && (
+                {pageItems.length === 0 && (
                   <tr>
                     <td colSpan={7} className="py-6 text-center text-slate-400">
                       No employees found
                     </td>
                   </tr>
                 )}
-                {filtered.map((employee) => (
+                {pageItems.map((employee) => (
                   <tr key={employee.id} className="border-t border-slate-200">
                     <td className="py-2.5 font-medium text-slate-900">{employee.employee_code}</td>
                     <td className="py-2.5 text-slate-700">{employee.name}</td>
@@ -290,6 +299,15 @@ function EmployeesTab() {
             </table>
           </div>
         )}
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          rangeStart={rangeStart}
+          rangeEnd={rangeEnd}
+          totalCount={totalCount}
+          onPrev={onPrev}
+          onNext={onNext}
+        />
       </Panel>
 
       {showAddModal && (
