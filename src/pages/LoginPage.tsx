@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import FormField, { inputClass } from '../components/ui/FormField';
 import { useAuth } from '../context/AuthContext';
+import { LAST_PATH_KEY } from '../routes/lastPath';
 import anprLogo from '../assets/gate-vision-logo.png';
 
 export default function LoginPage() {
@@ -14,7 +15,12 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const from = (location.state as { from?: string } | null)?.from ?? '/';
+  // React Router's location.state (set by ProtectedRoute's redirect) only
+  // survives in-memory SPA navigation. If it's missing — e.g. this /login
+  // load itself raced a hard refresh — fall back to the last route we
+  // tracked in sessionStorage instead of defaulting straight to Dashboard.
+  const from =
+    (location.state as { from?: string } | null)?.from ?? sessionStorage.getItem(LAST_PATH_KEY) ?? '/';
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
