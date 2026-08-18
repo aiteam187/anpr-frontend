@@ -15,6 +15,13 @@ dist-ssr
 .env.*
 !.env.example
 
+# Locally-generated dev TLS cert/key (see vite.config.ts) — machine-specific,
+# self-signed, regenerate per-dev via the openssl command in certs/README.md
+# rather than sharing a private key through version control. san.cnf and
+# README.md (the regeneration recipe) are NOT secret and stay tracked.
+certs/dev-cert.pem
+certs/dev-key.pem
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
