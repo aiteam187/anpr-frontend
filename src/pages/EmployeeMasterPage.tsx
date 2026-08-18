@@ -88,7 +88,10 @@ function EmployeesTab() {
   const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null);
   const [query, setQuery] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'' | 'enabled' | 'disabled'>('');
+  // Defaults to Enabled so a deleted/disabled employee disappears from the
+  // everyday view immediately — it's still in the DB (soft delete), just
+  // hidden until you switch this filter to Disabled to find/restore it.
+  const [statusFilter, setStatusFilter] = useState<'' | 'enabled' | 'disabled'>('enabled');
 
   const refresh = useCallback(async () => {
     try {
