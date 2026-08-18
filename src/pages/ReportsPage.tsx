@@ -156,6 +156,7 @@ export default function ReportsPage() {
     setMenuPreset('all');
     setExportCustomFrom('');
     setExportCustomTo('');
+    setFormat('xlsx');
   }, [tab]);
 
   const gateNameByCamId = useMemo(
@@ -220,6 +221,10 @@ export default function ReportsPage() {
   );
 
   const activeTab = TABS.find((t) => t.id === tab)!;
+  // History (10 cols) and Whitelist/Blacklist/Visitor (12 cols via
+  // authorizedVehicles) render too cramped in the fixed-width landscape-A4
+  // PDF table (see _build_export_pdf) — Excel only for those.
+  const hidePdfForTab = activeTab.kind === 'history' || activeTab.kind === 'authorizedVehicles';
   const showGateFilter = tab === 'activeVehicles' || tab === 'history';
   const showStatusFilter = tab === 'whitelist' || tab === 'blacklist' || tab === 'visitor';
   const filtersActive = Boolean(gateFilter || statusFilter || rangePreset !== 'all');
@@ -381,7 +386,7 @@ export default function ReportsPage() {
               fullWidth={false}
               className="h-9 shadow-sm focus:ring-2 focus:ring-blue-500/30"
             >
-              {FORMAT_OPTIONS.map((opt) => (
+              {FORMAT_OPTIONS.filter((opt) => opt.value !== 'pdf' || !hidePdfForTab).map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
                 </option>

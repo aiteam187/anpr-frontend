@@ -265,6 +265,7 @@ export default function MonitoringTrackingPage() {
               fallback="vehicle-tracking.csv"
               params={{ plate: query.trim() || undefined }}
               withTimeline
+              hidePdf={exportKindForEventFilter(eventFilter) === 'history'}
             />
           }
         >

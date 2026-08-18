@@ -12,6 +12,8 @@ interface ExportControlsProps {
   params?: Record<string, string | undefined>;
   /** Shows a self-contained Today/Yesterday/7 Days/etc. + custom-range menu (same select-then-Export/Cancel pattern as the Reports page export) that adds start_date/end_date to the export request — for pages whose export endpoint supports date filtering but that don't already have their own DateRangeDropdown wired into the export (that dropdown already covers this, so skip this prop there to avoid two timeline controls on one page). */
   withTimeline?: boolean;
+  /** Hides the PDF option, leaving only Excel — set for exports with enough columns that the fixed-width landscape-A4 PDF table renders too cramped/wrapped to be usable (see _build_export_pdf on the backend). */
+  hidePdf?: boolean;
 }
 
 type TimelineChoice = '' | RangePreset;
@@ -33,7 +35,7 @@ function localDateStr(d: Date): string {
 }
 
 /** Format-select + Export button, wired to downloadExport — used by every master/report page's export action. When withTimeline is set, the Export button opens a select-then-confirm menu (presets + custom From/To, Cancel/Export at the bottom) instead of downloading immediately, matching the Reports page export. */
-export default function ExportControls({ kind, fallback, params, withTimeline }: ExportControlsProps) {
+export default function ExportControls({ kind, fallback, params, withTimeline, hidePdf }: ExportControlsProps) {
   const [format, setFormat] = useState<ExportFormat>('xlsx');
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +45,10 @@ export default function ExportControls({ kind, fallback, params, withTimeline }:
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
   const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (hidePdf && format === 'pdf') setFormat('xlsx');
+  }, [hidePdf, format]);
 
   useEffect(() => {
     if (!showMenu) return;
@@ -117,7 +123,7 @@ export default function ExportControls({ kind, fallback, params, withTimeline }:
           className="h-9 shadow-sm focus:ring-2 focus:ring-blue-500/30"
         >
           <option value="xlsx">Excel</option>
-          <option value="pdf">PDF</option>
+          {!hidePdf && <option value="pdf">PDF</option>}
         </Select>
         {withTimeline ? (
           <div className="relative" ref={menuRef}>

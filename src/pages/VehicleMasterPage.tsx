@@ -351,6 +351,7 @@ function VehiclesTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
               fallback="vehicles.csv"
               params={{ list_type: listTypeFilter || undefined, plate: query.trim() || undefined }}
               withTimeline
+              hidePdf
             />
           </div>
         }
@@ -728,6 +729,7 @@ function AllowlistTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
               fallback="allowlist.csv"
               params={{ list_type: 'whitelist', plate: query.trim() || undefined }}
               withTimeline
+              hidePdf
             />
           </div>
         }
@@ -993,6 +995,7 @@ function BlacklistTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
               fallback="blacklist.csv"
               params={{ list_type: 'blacklist', plate: query.trim() || undefined }}
               withTimeline
+              hidePdf
             />
           </div>
         }
@@ -1259,6 +1262,7 @@ function VisitorsTab({ vehicleTypes, fuelTypes }: { vehicleTypes: string[]; fuel
               fallback="visitors.csv"
               params={{ list_type: 'visitor', plate: query.trim() || undefined }}
               withTimeline
+              hidePdf
             />
           </div>
         }

@@ -197,6 +197,7 @@ export default function VisitorsPage() {
               fallback="visitors.csv"
               params={{ list_type: 'visitor', plate: query.trim() || undefined }}
               withTimeline
+              hidePdf
             />
           </div>
         }
