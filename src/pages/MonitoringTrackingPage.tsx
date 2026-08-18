@@ -253,7 +253,7 @@ export default function MonitoringTrackingPage() {
                     Gate
                   </th>
                   <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Duration
+                    Dwell Time
                   </th>
                   <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Time
