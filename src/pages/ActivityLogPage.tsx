@@ -266,7 +266,7 @@ export default function ActivityLogPage() {
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto rounded-lg border border-slate-100">
+            <div className="max-h-[60vh] overflow-auto rounded-lg border border-slate-100">
               <table className="w-full border-collapse text-left text-sm">
                 <thead className="sticky top-0 z-10 bg-slate-50">
                   <tr>

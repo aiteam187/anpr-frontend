@@ -10,9 +10,9 @@ interface GatesTableProps {
 
 export default function GatesTable({ gates, onEdit, onToggleEnabled, onDelete }: GatesTableProps) {
   return (
-    <div className="overflow-x-auto">
+    <div className="max-h-[60vh] overflow-auto">
       <table className="w-full text-left text-sm">
-        <thead>
+        <thead className="sticky top-0 bg-white">
           <tr className="text-xs text-slate-500">
             <th className="pb-2 font-medium">Gate</th>
             <th className="pb-2 font-medium">Direction</th>

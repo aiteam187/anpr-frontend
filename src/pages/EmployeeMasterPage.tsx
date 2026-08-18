@@ -225,9 +225,9 @@ function EmployeesTab() {
         ) : error ? (
           <p className="py-6 text-center text-sm text-red-600">{error}</p>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="max-h-[60vh] overflow-auto">
             <table className="w-full text-left text-sm">
-              <thead>
+              <thead className="sticky top-0 bg-white">
                 <tr className="text-xs text-slate-500">
                   <th className="pb-2 font-medium">Employee Code</th>
                   <th className="pb-2 font-medium">Name</th>

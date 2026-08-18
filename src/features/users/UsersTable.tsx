@@ -10,9 +10,9 @@ interface UsersTableProps {
 
 export default function UsersTable({ users, currentUserId, onEdit }: UsersTableProps) {
   return (
-    <div className="overflow-x-auto">
+    <div className="max-h-[60vh] overflow-auto">
       <table className="w-full text-left text-sm">
-        <thead>
+        <thead className="sticky top-0 bg-white">
           <tr className="text-xs text-slate-500">
             <th className="pb-2 font-medium">User</th>
             <th className="pb-2 font-medium">Role</th>
