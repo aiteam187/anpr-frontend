@@ -9,6 +9,7 @@ export interface AnalyticsTotals {
   currently_inside: number;
   unauthorized_attempts: number;
   blacklisted_attempts: number;
+  visitor_entries: number;
 }
 
 export interface TrafficByDay {
@@ -45,4 +46,5 @@ export interface AnalyticsSummary {
 export interface AnalyticsQuery {
   start_date?: string;
   end_date?: string;
+  cam_id?: string;
 }

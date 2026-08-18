@@ -1,19 +1,24 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { Car, ChevronDown, ChevronRight, X } from 'lucide-react';
 import { navItems, type NavItem } from './navItems';
 import Select from '../ui/Select';
 import { usePersistedState } from '../../hooks/usePersistedState';
+import { useInterval } from '../../hooks/useInterval';
 import { usePermissions } from '../../context/PermissionsContext';
+import { getAnalyticsSummary } from '../../services/analyticsService';
+import { getGates } from '../../services/gatesService';
+import type { AnalyticsTotals } from '../../types/analytics';
+import type { GateConfig } from '../../types/gate';
 import anprLogo from '../../assets/anpr-logo.png';
 
-const summaryItems = [
-  { label: 'Total Vehicles', value: '1,265', color: 'text-slate-700' },
-  { label: 'Entry', value: '632', color: 'text-emerald-600' },
-  { label: 'Exit', value: '633', color: 'text-blue-600' },
-  { label: 'Denied', value: '12', color: 'text-red-600' },
-  { label: 'Visitors', value: '63', color: 'text-amber-600' },
-];
+const SUMMARY_POLL_MS = 20000;
+
+function todayStartIso(): string {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString();
+}
 
 interface SidebarProps {
   collapsed: boolean;
@@ -31,6 +36,63 @@ export default function Sidebar({
   const [expanded, setExpanded] = useState<string | null>(null);
   const [summaryOpen, setSummaryOpen] = usePersistedState('anpr_sidebar_summary_open', false);
   const { loading: permissionsLoading, canView } = usePermissions();
+
+  const [gates, setGates] = useState<GateConfig[]>([]);
+  const [gateFilter, setGateFilter] = useState('');
+  const [totals, setTotals] = useState<AnalyticsTotals | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(true);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
+
+  const canViewSummary = canView('analytics');
+
+  useEffect(() => {
+    if (!canViewSummary) return;
+    getGates()
+      .then((res) => setGates(res.filter((g) => g.enabled)))
+      .catch(() => {
+        // Gate list is a convenience filter — silently skip if it fails to load.
+      });
+  }, [canViewSummary]);
+
+  const refreshSummary = useCallback(async () => {
+    if (!canViewSummary) return;
+    try {
+      const res = await getAnalyticsSummary({
+        start_date: todayStartIso(),
+        end_date: new Date().toISOString(),
+        cam_id: gateFilter || undefined,
+      });
+      setTotals(res.totals);
+      setSummaryError(null);
+    } catch (err) {
+      setSummaryError(err instanceof Error ? err.message : 'Failed to load summary');
+    } finally {
+      setSummaryLoading(false);
+    }
+  }, [canViewSummary, gateFilter]);
+
+  useEffect(() => {
+    if (summaryOpen) refreshSummary();
+  }, [summaryOpen, refreshSummary]);
+
+  // Keeps the widget live while expanded, without hammering the API while
+  // it's collapsed (the interval still ticks, refreshSummary just no-ops
+  // via the summaryOpen check inside the effect above having already run —
+  // this only needs to matter for the recurring tick, not the initial load).
+  useInterval(() => {
+    if (summaryOpen) refreshSummary();
+  }, SUMMARY_POLL_MS);
+
+  const summaryItems = useMemo(() => {
+    if (!totals) return [];
+    return [
+      { label: 'Total Vehicles', value: totals.entries + totals.exits, color: 'text-slate-700' },
+      { label: 'Entry', value: totals.entries, color: 'text-emerald-600' },
+      { label: 'Exit', value: totals.exits, color: 'text-blue-600' },
+      { label: 'Denied', value: totals.unauthorized_attempts, color: 'text-red-600' },
+      { label: 'Visitors', value: totals.visitor_entries, color: 'text-amber-600' },
+    ];
+  }, [totals]);
 
   const visibleNavItems = useMemo(() => {
     if (permissionsLoading) return [];
@@ -179,7 +241,7 @@ export default function Sidebar({
           })}
         </nav>
 
-        {(!collapsed || mobileOpen) && (
+        {(!collapsed || mobileOpen) && canViewSummary && (
           <div className="border-t border-slate-200 p-4">
             <button
               type="button"
@@ -197,22 +259,37 @@ export default function Sidebar({
             </button>
             {summaryOpen && (
               <>
-                <Select className="mb-3 text-xs">
-                  <option>All Gates</option>
-                </Select>
-                <ul className="space-y-2">
-                  {summaryItems.map((s) => (
-                    <li
-                      key={s.label}
-                      className="flex items-center justify-between text-xs"
-                    >
-                      <span className="text-slate-500">{s.label}</span>
-                      <span className={`font-semibold ${s.color}`}>
-                        {s.value}
-                      </span>
-                    </li>
+                <Select
+                  value={gateFilter}
+                  onChange={(e) => setGateFilter(e.target.value)}
+                  className="mb-3 text-xs"
+                >
+                  <option value="">All Gates</option>
+                  {gates.map((g) => (
+                    <option key={g.camera_id} value={g.camera_id}>
+                      {g.gate_name}
+                    </option>
                   ))}
-                </ul>
+                </Select>
+                {summaryLoading ? (
+                  <p className="py-1 text-xs text-slate-400">Loading…</p>
+                ) : summaryError ? (
+                  <p className="py-1 text-xs text-red-600">{summaryError}</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {summaryItems.map((s) => (
+                      <li
+                        key={s.label}
+                        className="flex items-center justify-between text-xs"
+                      >
+                        <span className="text-slate-500">{s.label}</span>
+                        <span className={`font-semibold ${s.color}`}>
+                          {s.value}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </>
             )}
           </div>
