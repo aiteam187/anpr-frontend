@@ -106,7 +106,7 @@ export default function AlertsPanel({
 
   const sorted = alerts
     .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
-    .slice(0, 8);
+    .slice(0, 5);
 
   return (
     <Panel
