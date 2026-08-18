@@ -6,6 +6,7 @@ import FormField, { inputClass } from '../components/ui/FormField';
 import Select from '../components/ui/Select';
 import ImageLightbox from '../components/ui/ImageLightbox';
 import ExportControls from '../components/ui/ExportControls';
+import DateRangeDropdown from '../components/ui/DateRangeDropdown';
 import ActivityDetailModal from '../features/liveMonitoring/ActivityDetailModal';
 import {
   buildActivityRecords,
@@ -21,14 +22,6 @@ import { assetUrl } from '../services/api';
 import { formatDateTime, formatElapsed } from '../utils/format';
 import type { ExportKind } from '../services/exportsService';
 import { getRangeForPreset, localDateStr, type RangePreset } from '../utils/dateRange';
-
-const DATE_PRESETS: { value: Exclude<RangePreset, 'custom'>; label: string }[] = [
-  { value: 'today', label: 'Today' },
-  { value: 'yesterday', label: 'Yesterday' },
-  { value: '7d', label: '7 Days' },
-  { value: '30d', label: 'Last Month' },
-  { value: '90d', label: '3 Months' },
-];
 
 // No single backend export covers this page's merged entry+exit+
 // unauthorized timeline — map the current Event filter to whichever
@@ -100,13 +93,27 @@ export default function MonitoringTrackingPage() {
 
   const resetPage = () => setPage(1);
 
-  const [activePreset, setActivePreset] = useState<Exclude<RangePreset, 'custom'> | null>(null);
+  const [activePreset, setActivePreset] = useState<Exclude<RangePreset, 'custom'> | 'custom' | null>(null);
 
   const applyPreset = (preset: Exclude<RangePreset, 'custom'>) => {
     const range = getRangeForPreset(preset);
     setStartDate(localDateStr(range.start));
     setEndDate(localDateStr(range.end));
     setActivePreset(preset);
+    resetPage();
+  };
+
+  const applyCustomRange = (start: string, end: string) => {
+    setStartDate(start);
+    setEndDate(end);
+    setActivePreset('custom');
+    resetPage();
+  };
+
+  const clearDateFilter = () => {
+    setStartDate('');
+    setEndDate('');
+    setActivePreset(null);
     resetPage();
   };
 
@@ -118,23 +125,7 @@ export default function MonitoringTrackingPage() {
       />
 
       <Panel title="Filters" badge={<Filter className="h-3.5 w-3.5 text-slate-400" />}>
-        <div className="mb-3 flex flex-wrap items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1">
-          {DATE_PRESETS.map((p) => (
-            <button
-              key={p.value}
-              type="button"
-              onClick={() => applyPreset(p.value)}
-              className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
-                activePreset === p.value
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <FormField label="Search Plate">
             <div className="relative">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -182,47 +173,32 @@ export default function MonitoringTrackingPage() {
                 ))}
             </Select>
           </FormField>
-          <FormField label="From">
-            <input
-              type="date"
-              className={inputClass}
-              value={startDate}
-              onChange={(e) => {
-                setStartDate(e.target.value);
-                setActivePreset(null);
-                resetPage();
-              }}
-            />
+          <FormField label="Date Range">
+            <div className="flex items-center gap-2">
+              <DateRangeDropdown
+                preset={activePreset}
+                startDate={startDate}
+                endDate={endDate}
+                onPreset={applyPreset}
+                onCustomRange={applyCustomRange}
+                onClear={clearDateFilter}
+              />
+              {(query || eventFilter || gateFilter || activePreset) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuery('');
+                    setEventFilter('');
+                    setGateFilter('');
+                    clearDateFilter();
+                  }}
+                  className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
           </FormField>
-          <FormField label="To">
-            <input
-              type="date"
-              className={inputClass}
-              value={endDate}
-              onChange={(e) => {
-                setEndDate(e.target.value);
-                setActivePreset(null);
-                resetPage();
-              }}
-            />
-          </FormField>
-          <div className="flex items-end">
-            <button
-              type="button"
-              onClick={() => {
-                setQuery('');
-                setEventFilter('');
-                setGateFilter('');
-                setStartDate('');
-                setEndDate('');
-                setActivePreset(null);
-                resetPage();
-              }}
-              className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
-            >
-              Clear filters
-            </button>
-          </div>
         </div>
       </Panel>
 
