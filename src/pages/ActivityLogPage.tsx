@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import { ClipboardList, Download, Filter, Search } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ChevronDown, ClipboardList, Download, Filter, Search } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import Panel from '../components/ui/Panel';
 import FormField, { inputClass } from '../components/ui/FormField';
@@ -12,6 +12,7 @@ import { getActivityLog } from '../services/activityLogService';
 import { downloadExport, type ExportFormat } from '../services/exportsService';
 import { formatDateTime } from '../utils/format';
 import { getRangeForPreset, localDateStr, type RangePreset } from '../utils/dateRange';
+import { RANGE_PRESETS } from '../utils/reportDateRange';
 import type { ActivityLogEntry } from '../types/activityLog';
 
 const FORMAT_OPTIONS: { value: ExportFormat; label: string }[] = [
@@ -79,6 +80,22 @@ export default function ActivityLogPage() {
   const [format, setFormat] = useState<ExportFormat>('xlsx');
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [exportPreset, setExportPreset] = useState<Exclude<RangePreset, 'custom'> | 'custom' | null>(null);
+  const [exportCustomFrom, setExportCustomFrom] = useState('');
+  const [exportCustomTo, setExportCustomTo] = useState('');
+  const exportMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showExportMenu) return;
+    const handleClick = (e: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
+        setShowExportMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showExportMenu]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -130,14 +147,50 @@ export default function ActivityLogPage() {
     handleFilterChange();
   };
 
-  const handleDownload = async () => {
+  // Clicking Export opens this menu instead of downloading immediately —
+  // same select-a-range-then-confirm pattern used across Reports/Alarms.
+  const selectExportPreset = (preset: Exclude<RangePreset, 'custom'> | null) => {
+    setExportPreset(preset);
+    setExportCustomFrom('');
+    setExportCustomTo('');
+  };
+
+  const handleCancelExportMenu = () => {
+    setShowExportMenu(false);
+    setExportPreset(null);
+    setExportCustomFrom('');
+    setExportCustomTo('');
+  };
+
+  const handleConfirmExport = async () => {
+    setShowExportMenu(false);
+
+    let from = '';
+    let to = '';
+    let nextPreset: Exclude<RangePreset, 'custom'> | 'custom' | null = null;
+    if (exportCustomFrom || exportCustomTo) {
+      from = exportCustomFrom;
+      to = exportCustomTo;
+      nextPreset = 'custom';
+    } else if (exportPreset) {
+      const range = getRangeForPreset(exportPreset);
+      from = localDateStr(range.start);
+      to = localDateStr(range.end);
+      nextPreset = exportPreset;
+    }
+    // Sync the visible filter (and refetch the table) to match what's exported.
+    setStartDate(from);
+    setEndDate(to);
+    setActivePreset(nextPreset);
+    setOffset(0);
+
     setDownloading(true);
     setDownloadError(null);
     try {
       await downloadExport('activityLog', 'activity_log.csv', format, {
         category: category || undefined,
-        start_date: startDate ? `${startDate}T00:00:00` : undefined,
-        end_date: endDate ? `${endDate}T23:59:59` : undefined,
+        start_date: from ? `${from}T00:00:00` : undefined,
+        end_date: to ? `${to}T23:59:59` : undefined,
         target: target.trim() || undefined,
       });
     } catch (err) {
@@ -242,15 +295,92 @@ export default function ActivityLogPage() {
                 </option>
               ))}
             </Select>
-            <button
-              type="button"
-              onClick={handleDownload}
-              disabled={downloading}
-              className="flex h-9 items-center gap-1.5 rounded-md bg-blue-600 px-3 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <Download className="h-4 w-4" />
-              {downloading ? 'Downloading…' : `Export ${format.toUpperCase()}`}
-            </button>
+            <div className="relative" ref={exportMenuRef}>
+              <button
+                type="button"
+                onClick={() => setShowExportMenu((v) => !v)}
+                disabled={downloading}
+                className="flex h-9 items-center gap-1.5 rounded-md bg-blue-600 px-3 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <Download className="h-4 w-4" />
+                {downloading ? 'Downloading…' : `Export ${format.toUpperCase()}`}
+                <ChevronDown className="h-3.5 w-3.5" />
+              </button>
+              {showExportMenu && (
+                <div className="absolute right-0 top-full z-20 mt-1 w-52 rounded-md border border-slate-200 bg-white py-1 shadow-lg">
+                  <button
+                    type="button"
+                    onClick={() => selectExportPreset(null)}
+                    className={`block w-full px-3 py-1.5 text-left text-sm ${
+                      exportPreset === null && !exportCustomFrom && !exportCustomTo
+                        ? 'bg-blue-50 font-medium text-blue-700'
+                        : 'text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    All Time
+                  </button>
+                  {RANGE_PRESETS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => selectExportPreset(opt.value)}
+                      className={`block w-full px-3 py-1.5 text-left text-sm ${
+                        exportPreset === opt.value && !exportCustomFrom && !exportCustomTo
+                          ? 'bg-blue-50 font-medium text-blue-700'
+                          : 'text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                  <div className="border-t border-slate-100 p-2">
+                    <div className="mb-1.5 flex items-center justify-between">
+                      <p className="text-xs font-medium text-slate-500">Custom Range</p>
+                      {(exportCustomFrom || exportCustomTo) && (
+                        <button
+                          type="button"
+                          onClick={() => selectExportPreset(null)}
+                          className="text-xs font-medium text-blue-600 hover:text-blue-700"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                    <div className="space-y-1.5">
+                      <input
+                        type="date"
+                        value={exportCustomFrom}
+                        onChange={(e) => setExportCustomFrom(e.target.value)}
+                        className={`${inputClass} text-xs`}
+                      />
+                      <input
+                        type="date"
+                        value={exportCustomTo}
+                        onChange={(e) => setExportCustomTo(e.target.value)}
+                        className={`${inputClass} text-xs`}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-1.5 border-t border-slate-100 p-2">
+                    <button
+                      type="button"
+                      onClick={handleCancelExportMenu}
+                      className="flex-1 rounded-md border border-slate-300 px-2 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleConfirmExport}
+                      className="flex flex-1 items-center justify-center gap-1.5 rounded-md bg-blue-600 px-2 py-1.5 text-xs font-medium text-white hover:bg-blue-500"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      Export
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         }
       >
