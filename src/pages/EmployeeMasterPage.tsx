@@ -86,6 +86,11 @@ function EmployeesTab() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null);
+  const [pendingCreate, setPendingCreate] = useState<EmployeeCreatePayload | null>(null);
+  const [pendingUpdate, setPendingUpdate] = useState<{
+    employee: Employee;
+    payload: EmployeeUpdatePayload;
+  } | null>(null);
   const [query, setQuery] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('');
   // Defaults to showing all statuses — a disabled employee stays visible in
@@ -115,16 +120,31 @@ function EmployeesTab() {
     refresh();
   }, [refresh]);
 
+  // Add/Edit stage their submitted payload and wait for an explicit
+  // ConfirmDialog before actually calling the API — the form's own submit
+  // button just closes the form and opens the confirmation.
   const handleCreate = async (payload: EmployeeCreatePayload | EmployeeUpdatePayload) => {
-    await createEmployee(payload as EmployeeCreatePayload);
     setShowAddModal(false);
-    await refresh();
+    setPendingCreate(payload as EmployeeCreatePayload);
   };
 
   const handleUpdate = async (payload: EmployeeCreatePayload | EmployeeUpdatePayload) => {
     if (!editingEmployee) return;
-    await updateEmployee(editingEmployee.id, payload);
     setEditingEmployee(null);
+    setPendingUpdate({ employee: editingEmployee, payload });
+  };
+
+  const handleConfirmCreate = async () => {
+    if (!pendingCreate) return;
+    await createEmployee(pendingCreate);
+    setPendingCreate(null);
+    await refresh();
+  };
+
+  const handleConfirmUpdate = async () => {
+    if (!pendingUpdate) return;
+    await updateEmployee(pendingUpdate.employee.id, pendingUpdate.payload);
+    setPendingUpdate(null);
     await refresh();
   };
 
@@ -338,6 +358,24 @@ function EmployeesTab() {
           reportingManagers={reportingManagers}
           onClose={() => setEditingEmployee(null)}
           onSubmit={handleUpdate}
+        />
+      )}
+      {pendingCreate && (
+        <ConfirmDialog
+          title="Add Employee"
+          message={`Add ${pendingCreate.name} (${pendingCreate.employee_code}) as a new employee?`}
+          confirmLabel="Add"
+          onConfirm={handleConfirmCreate}
+          onClose={() => setPendingCreate(null)}
+        />
+      )}
+      {pendingUpdate && (
+        <ConfirmDialog
+          title="Save Changes"
+          message={`Save these changes to ${pendingUpdate.employee.name} (${pendingUpdate.employee.employee_code})?`}
+          confirmLabel="Save Changes"
+          onConfirm={handleConfirmUpdate}
+          onClose={() => setPendingUpdate(null)}
         />
       )}
       {deleteTarget && (

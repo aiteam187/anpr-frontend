@@ -31,6 +31,8 @@ export default function SimpleMasterPage({ title, description, itemLabel, api }:
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingItem, setEditingItem] = useState<SimpleMaster | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<SimpleMaster | null>(null);
+  const [pendingCreateName, setPendingCreateName] = useState<string | null>(null);
+  const [pendingUpdate, setPendingUpdate] = useState<{ item: SimpleMaster; name: string } | null>(null);
 
   const { page, totalPages, pageItems, rangeStart, rangeEnd, totalCount, onPrev, onNext } =
     usePagination(items);
@@ -51,16 +53,32 @@ export default function SimpleMasterPage({ title, description, itemLabel, api }:
     refresh();
   }, [refresh]);
 
+  // Both Add and Edit stage their submitted value and wait for an explicit
+  // ConfirmDialog before actually calling the API — the form's own "Add"/
+  // "Save Changes" button just closes the form and opens the confirmation,
+  // it doesn't perform the mutation itself.
   const handleCreate = async (name: string) => {
-    await api.create({ name });
     setShowAddModal(false);
-    await refresh();
+    setPendingCreateName(name);
   };
 
   const handleUpdate = async (name: string) => {
     if (!editingItem) return;
-    await api.update(editingItem.id, { name });
     setEditingItem(null);
+    setPendingUpdate({ item: editingItem, name });
+  };
+
+  const handleConfirmCreate = async () => {
+    if (pendingCreateName === null) return;
+    await api.create({ name: pendingCreateName });
+    setPendingCreateName(null);
+    await refresh();
+  };
+
+  const handleConfirmUpdate = async () => {
+    if (!pendingUpdate) return;
+    await api.update(pendingUpdate.item.id, { name: pendingUpdate.name });
+    setPendingUpdate(null);
     await refresh();
   };
 
@@ -195,6 +213,24 @@ export default function SimpleMasterPage({ title, description, itemLabel, api }:
           initialName={editingItem.name}
           onClose={() => setEditingItem(null)}
           onSubmit={handleUpdate}
+        />
+      )}
+      {pendingCreateName !== null && (
+        <ConfirmDialog
+          title={`Add ${itemLabel}`}
+          message={`Add "${pendingCreateName}" as a new ${itemLabel.toLowerCase()}?`}
+          confirmLabel="Add"
+          onConfirm={handleConfirmCreate}
+          onClose={() => setPendingCreateName(null)}
+        />
+      )}
+      {pendingUpdate && (
+        <ConfirmDialog
+          title={`Save Changes`}
+          message={`Rename "${pendingUpdate.item.name}" to "${pendingUpdate.name}"?`}
+          confirmLabel="Save Changes"
+          onConfirm={handleConfirmUpdate}
+          onClose={() => setPendingUpdate(null)}
         />
       )}
       {deleteTarget && (

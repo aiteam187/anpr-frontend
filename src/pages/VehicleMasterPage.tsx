@@ -194,6 +194,11 @@ function VehiclesTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
   const [actionError, setActionError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
+  const [pendingAdd, setPendingAdd] = useState<Parameters<typeof addAuthorizedVehicle>[0] | null>(null);
+  const [pendingSaveDetails, setPendingSaveDetails] = useState<{
+    vehicle: AuthorizedVehicle;
+    payload: Parameters<typeof updateVehicleDetails>[1];
+  } | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -211,9 +216,24 @@ function VehiclesTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
     refresh();
   }, [refresh]);
 
+  // Add/Edit stage their submitted payload and wait for an explicit
+  // ConfirmDialog before actually calling the API.
   const handleAddVehicle = async (payload: Parameters<typeof addAuthorizedVehicle>[0]) => {
-    await addAuthorizedVehicle(payload);
     setShowAddModal(false);
+    setPendingAdd(payload);
+  };
+
+  const handleConfirmAdd = async () => {
+    if (!pendingAdd) return;
+    await addAuthorizedVehicle(pendingAdd);
+    setPendingAdd(null);
+    await refresh();
+  };
+
+  const handleConfirmSaveDetails = async () => {
+    if (!pendingSaveDetails) return;
+    await updateVehicleDetails(pendingSaveDetails.vehicle.plate_number, pendingSaveDetails.payload);
+    setPendingSaveDetails(null);
     await refresh();
   };
 
@@ -252,9 +272,8 @@ function VehiclesTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
 
   const handleSaveDetails = async (payload: Parameters<typeof updateVehicleDetails>[1]) => {
     if (!editingVehicle) return;
-    await updateVehicleDetails(editingVehicle.plate_number, payload);
+    setPendingSaveDetails({ vehicle: editingVehicle, payload });
     setEditingVehicle(null);
-    await refresh();
   };
 
   const handleToggleActive = async () => {
@@ -562,6 +581,24 @@ function VehiclesTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
           onClose={() => setRestoreTarget(null)}
         />
       )}
+      {pendingAdd && (
+        <ConfirmDialog
+          title="Add Vehicle"
+          message={`Add ${pendingAdd.plate_number} to the ${pendingAdd.list_type ?? 'whitelist'}?`}
+          confirmLabel="Add"
+          onConfirm={handleConfirmAdd}
+          onClose={() => setPendingAdd(null)}
+        />
+      )}
+      {pendingSaveDetails && (
+        <ConfirmDialog
+          title="Save Changes"
+          message={`Save these changes to ${pendingSaveDetails.vehicle.plate_number}?`}
+          confirmLabel="Save Changes"
+          onConfirm={handleConfirmSaveDetails}
+          onClose={() => setPendingSaveDetails(null)}
+        />
+      )}
       {deleteTarget && (
         <ConfirmDialog
           title="Delete Vehicle"
@@ -594,6 +631,11 @@ function AllowlistTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
   const [actionError, setActionError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
+  const [pendingAdd, setPendingAdd] = useState<Parameters<typeof addAuthorizedVehicle>[0] | null>(null);
+  const [pendingSaveDetails, setPendingSaveDetails] = useState<{
+    vehicle: AuthorizedVehicle;
+    payload: Parameters<typeof updateVehicleDetails>[1];
+  } | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -611,9 +653,24 @@ function AllowlistTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
     refresh();
   }, [refresh]);
 
+  // Add/Edit stage their submitted payload and wait for an explicit
+  // ConfirmDialog before actually calling the API.
   const handleAddVehicle = async (payload: Parameters<typeof addAuthorizedVehicle>[0]) => {
-    await addAuthorizedVehicle(payload);
     setShowAddModal(false);
+    setPendingAdd(payload);
+  };
+
+  const handleConfirmAdd = async () => {
+    if (!pendingAdd) return;
+    await addAuthorizedVehicle(pendingAdd);
+    setPendingAdd(null);
+    await refresh();
+  };
+
+  const handleConfirmSaveDetails = async () => {
+    if (!pendingSaveDetails) return;
+    await updateVehicleDetails(pendingSaveDetails.vehicle.plate_number, pendingSaveDetails.payload);
+    setPendingSaveDetails(null);
     await refresh();
   };
 
@@ -649,9 +706,8 @@ function AllowlistTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
 
   const handleSaveDetails = async (payload: Parameters<typeof updateVehicleDetails>[1]) => {
     if (!editingVehicle) return;
-    await updateVehicleDetails(editingVehicle.plate_number, payload);
+    setPendingSaveDetails({ vehicle: editingVehicle, payload });
     setEditingVehicle(null);
-    await refresh();
   };
 
   const handleToggleActive = async () => {
@@ -907,6 +963,24 @@ function AllowlistTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
           onSubmit={handleBlacklist}
         />
       )}
+      {pendingAdd && (
+        <ConfirmDialog
+          title="Add Vehicle"
+          message={`Add ${pendingAdd.plate_number} to the allowlist?`}
+          confirmLabel="Add"
+          onConfirm={handleConfirmAdd}
+          onClose={() => setPendingAdd(null)}
+        />
+      )}
+      {pendingSaveDetails && (
+        <ConfirmDialog
+          title="Save Changes"
+          message={`Save these changes to ${pendingSaveDetails.vehicle.plate_number}?`}
+          confirmLabel="Save Changes"
+          onConfirm={handleConfirmSaveDetails}
+          onClose={() => setPendingSaveDetails(null)}
+        />
+      )}
       {deleteTarget && (
         <ConfirmDialog
           title="Delete Vehicle"
@@ -929,6 +1003,10 @@ function BlacklistTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
   const [editingVehicle, setEditingVehicle] = useState<AuthorizedVehicle | null>(null);
   const [viewingVehicle, setViewingVehicle] = useState<AuthorizedVehicle | null>(null);
   const [restoreTarget, setRestoreTarget] = useState<AuthorizedVehicle | null>(null);
+  const [pendingSaveDetails, setPendingSaveDetails] = useState<{
+    vehicle: AuthorizedVehicle;
+    payload: Parameters<typeof updateVehicleDetails>[1];
+  } | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -963,8 +1041,14 @@ function BlacklistTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
 
   const handleSaveDetails = async (payload: Parameters<typeof updateVehicleDetails>[1]) => {
     if (!editingVehicle) return;
-    await updateVehicleDetails(editingVehicle.plate_number, payload);
+    setPendingSaveDetails({ vehicle: editingVehicle, payload });
     setEditingVehicle(null);
+  };
+
+  const handleConfirmSaveDetails = async () => {
+    if (!pendingSaveDetails) return;
+    await updateVehicleDetails(pendingSaveDetails.vehicle.plate_number, pendingSaveDetails.payload);
+    setPendingSaveDetails(null);
     await refresh();
   };
 
@@ -1104,6 +1188,15 @@ function BlacklistTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
           onClose={() => setRestoreTarget(null)}
         />
       )}
+      {pendingSaveDetails && (
+        <ConfirmDialog
+          title="Save Changes"
+          message={`Save these changes to ${pendingSaveDetails.vehicle.plate_number}?`}
+          confirmLabel="Save Changes"
+          onConfirm={handleConfirmSaveDetails}
+          onClose={() => setPendingSaveDetails(null)}
+        />
+      )}
     </div>
   );
 }
@@ -1124,6 +1217,10 @@ function VisitorsTab({ vehicleTypes, fuelTypes }: { vehicleTypes: string[]; fuel
   const [extendTarget, setExtendTarget] = useState<AuthorizedVehicle | null>(null);
   const [toggleTarget, setToggleTarget] = useState<AuthorizedVehicle | null>(null);
   const [revokeTarget, setRevokeTarget] = useState<AuthorizedVehicle | null>(null);
+  const [pendingAdd, setPendingAdd] = useState<NewVisitorInput | null>(null);
+  const [pendingEdit, setPendingEdit] = useState<{ visitor: AuthorizedVehicle; input: VisitorEditInput } | null>(
+    null,
+  );
 
   const refresh = useCallback(async () => {
     try {
@@ -1162,31 +1259,46 @@ function VisitorsTab({ vehicleTypes, fuelTypes }: { vehicleTypes: string[]; fuel
     setPage(1);
   }, [query, statusFilter, setPage]);
 
+  // Add/Edit stage their submitted input and wait for an explicit
+  // ConfirmDialog before actually calling the API.
   const handleAdd = async (input: NewVisitorInput) => {
-    await addAuthorizedVehicle({ plate_number: input.plateNumber });
-    await switchListType(input.plateNumber, {
-      list_type: 'visitor',
-      visit_purpose: input.visitPurpose,
-      visiting_whom: input.visitingWhom,
-      valid_from: input.validFrom,
-      valid_until: input.validUntil,
-    });
-    await updateVehicleDetails(input.plateNumber, input.details);
     setShowAddModal(false);
-    await refresh();
+    setPendingAdd(input);
   };
 
   const handleEdit = async (input: VisitorEditInput) => {
     if (!editingVisitor) return;
-    await switchListType(editingVisitor.plate_number, {
+    setPendingEdit({ visitor: editingVisitor, input });
+    setEditingVisitor(null);
+  };
+
+  const handleConfirmAdd = async () => {
+    if (!pendingAdd) return;
+    await addAuthorizedVehicle({ plate_number: pendingAdd.plateNumber });
+    await switchListType(pendingAdd.plateNumber, {
+      list_type: 'visitor',
+      visit_purpose: pendingAdd.visitPurpose,
+      visiting_whom: pendingAdd.visitingWhom,
+      valid_from: pendingAdd.validFrom,
+      valid_until: pendingAdd.validUntil,
+    });
+    await updateVehicleDetails(pendingAdd.plateNumber, pendingAdd.details);
+    setPendingAdd(null);
+    await refresh();
+  };
+
+  const handleConfirmEdit = async () => {
+    if (!pendingEdit) return;
+    const { visitor, input } = pendingEdit;
+    await switchListType(visitor.plate_number, {
       list_type: 'visitor',
       visit_purpose: input.visitPurpose,
       visiting_whom: input.visitingWhom,
       valid_from: input.validFrom,
       valid_until: input.validUntil,
     });
-    await updateVehicleDetails(editingVisitor.plate_number, input.details);
-    setEditingVisitor(null);
+    await updateVehicleDetails(visitor.plate_number, input.details);
+    setPendingEdit(null);
     await refresh();
   };
 
@@ -1315,6 +1427,24 @@ function VisitorsTab({ vehicleTypes, fuelTypes }: { vehicleTypes: string[]; fuel
           visitor={extendTarget}
           onClose={() => setExtendTarget(null)}
           onSubmit={handleExtend}
+        />
+      )}
+      {pendingAdd && (
+        <ConfirmDialog
+          title="Add Visitor"
+          message={`Add ${pendingAdd.plateNumber} as a new visitor?`}
+          confirmLabel="Add"
+          onConfirm={handleConfirmAdd}
+          onClose={() => setPendingAdd(null)}
+        />
+      )}
+      {pendingEdit && (
+        <ConfirmDialog
+          title="Save Changes"
+          message={`Save these changes to ${pendingEdit.visitor.plate_number}?`}
+          confirmLabel="Save Changes"
+          onConfirm={handleConfirmEdit}
+          onClose={() => setPendingEdit(null)}
         />
       )}
       {toggleTarget && (
