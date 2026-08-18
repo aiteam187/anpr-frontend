@@ -23,6 +23,7 @@ import { assetUrl } from '../services/api';
 import { formatDateTime, formatElapsed } from '../utils/format';
 import type { ExportKind } from '../services/exportsService';
 import { getRangeForPreset, localDateStr, type RangePreset } from '../utils/dateRange';
+import type { AuthorizedVehicle } from '../types/authorizedVehicle';
 
 // No single backend export covers this page's merged entry+exit+
 // unauthorized timeline — map the current Event filter to whichever
@@ -46,10 +47,31 @@ const EVENT_FILTERS: { value: ActivityEventType | ''; label: string }[] = [
   { value: 'unauthorized', label: 'Unauthorized' },
 ];
 
+type ListStatus = 'whitelist' | 'blacklist' | 'visitor' | 'deactivated' | 'unregistered';
+
+const LIST_FILTERS: { value: ListStatus | ''; label: string }[] = [
+  { value: '', label: 'All Lists' },
+  { value: 'whitelist', label: 'Allowlist' },
+  { value: 'blacklist', label: 'Blacklist' },
+  { value: 'visitor', label: 'Visitor' },
+  { value: 'deactivated', label: 'Deactivated' },
+  { value: 'unregistered', label: 'Unregistered' },
+];
+
+/** Mirrors the table's own List-column badge logic exactly — deactivated
+ * takes priority over list_type, unregistered means no AuthorizedVehicle
+ * row at all — so the filter and what's actually shown never disagree. */
+function listStatusOf(vehicle: AuthorizedVehicle | null): ListStatus {
+  if (!vehicle) return 'unregistered';
+  if (!vehicle.is_active) return 'deactivated';
+  return vehicle.list_type;
+}
+
 export default function MonitoringTrackingPage() {
   const data = useDashboardData();
   const [query, setQuery] = useState('');
   const [eventFilter, setEventFilter] = useState<ActivityEventType | ''>('');
+  const [listFilter, setListFilter] = useState<ListStatus | ''>('');
   const [gateFilter, setGateFilter] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -85,13 +107,14 @@ export default function MonitoringTrackingPage() {
       if (r.eventType === 'unauthorized' && !vehicleByPlate.has(r.plateNumber)) return false;
       if (q && !r.plateNumber.toUpperCase().includes(q)) return false;
       if (eventFilter && r.eventType !== eventFilter) return false;
+      if (listFilter && listStatusOf(vehicleByPlate.get(r.plateNumber) ?? null) !== listFilter) return false;
       if (gateFilter && r.camId !== gateFilter) return false;
       const t = new Date(r.time).getTime();
       if (start !== null && t < start) return false;
       if (end !== null && t > end) return false;
       return true;
     });
-  }, [allRecords, query, eventFilter, gateFilter, startDate, endDate, vehicleByPlate]);
+  }, [allRecords, query, eventFilter, listFilter, gateFilter, startDate, endDate, vehicleByPlate]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageRecords = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -132,7 +155,7 @@ export default function MonitoringTrackingPage() {
       />
 
       <Panel title="Filters" badge={<Filter className="h-3.5 w-3.5 text-slate-400" />}>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <FormField label="Search Plate">
             <div className="relative">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -156,6 +179,21 @@ export default function MonitoringTrackingPage() {
               }}
             >
               {EVENT_FILTERS.map((f) => (
+                <option key={f.value} value={f.value}>
+                  {f.label}
+                </option>
+              ))}
+            </Select>
+          </FormField>
+          <FormField label="List">
+            <Select
+              value={listFilter}
+              onChange={(e) => {
+                setListFilter(e.target.value as ListStatus | '');
+                resetPage();
+              }}
+            >
+              {LIST_FILTERS.map((f) => (
                 <option key={f.value} value={f.value}>
                   {f.label}
                 </option>
@@ -195,10 +233,11 @@ export default function MonitoringTrackingPage() {
                 onClick={() => {
                   setQuery('');
                   setEventFilter('');
+                  setListFilter('');
                   setGateFilter('');
                   clearDateFilter();
                 }}
-                disabled={!(query || eventFilter || gateFilter || activePreset)}
+                disabled={!(query || eventFilter || listFilter || gateFilter || activePreset)}
                 className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Clear filters
