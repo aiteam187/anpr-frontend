@@ -127,7 +127,7 @@ export default function Sidebar({
         } ${collapsed ? 'md:w-[72px]' : 'md:w-64'}`}
       >
         <div
-          className={`flex h-20 items-center border-b border-slate-200 ${
+          className={`flex h-24 items-center border-b border-slate-200 ${
             collapsed ? 'md:justify-center md:px-2' : 'px-5'
           }`}
         >
@@ -137,7 +137,7 @@ export default function Sidebar({
             className="flex flex-1 items-center justify-center gap-3 overflow-hidden rounded-md py-2 hover:bg-slate-100"
           >
             {(!collapsed || mobileOpen) ? (
-              <img src={anprLogo} alt="Gate Vision" className="h-14 w-auto shrink-0 object-contain" />
+              <img src={anprLogo} alt="Gate Vision" className="h-[72px] w-auto shrink-0 object-contain" />
             ) : (
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-600">
                 <Car className="h-5 w-5 text-white" />

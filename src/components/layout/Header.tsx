@@ -134,7 +134,7 @@ export default function Header({ onOpenMobileSidebar }: HeaderProps) {
   };
 
   return (
-    <header className="flex h-20 items-center justify-between gap-2 border-b border-slate-200 bg-white px-3 sm:px-6">
+    <header className="flex h-24 items-center justify-between gap-2 border-b border-slate-200 bg-white px-3 sm:px-6">
       <button
         type="button"
         onClick={onOpenMobileSidebar}
