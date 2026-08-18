@@ -180,10 +180,11 @@ function VehiclesTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [listTypeFilter, setListTypeFilter] = useState<ListType | ''>('');
-  // Defaults to Active so a deleted/deactivated vehicle disappears from the
-  // everyday view immediately — it's still in the DB (soft delete), just
-  // hidden until you switch this filter to Inactive to find/restore it.
-  const [statusFilter, setStatusFilter] = useState<'' | 'active' | 'inactive'>('active');
+  // Defaults to showing all statuses — a deactivated vehicle stays visible
+  // in the table with its Inactive badge rather than vanishing. Delete is
+  // the action that actually removes it from view (see deleted_at on the
+  // backend); this filter is just for browsing by status.
+  const [statusFilter, setStatusFilter] = useState<'' | 'active' | 'inactive'>('');
   const [editingVehicle, setEditingVehicle] = useState<AuthorizedVehicle | null>(null);
   const [viewingVehicle, setViewingVehicle] = useState<AuthorizedVehicle | null>(null);
   const [toggleTarget, setToggleTarget] = useState<AuthorizedVehicle | null>(null);
@@ -578,10 +579,11 @@ function AllowlistTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
-  // Defaults to Active so a deleted/deactivated vehicle disappears from the
-  // everyday view immediately — it's still in the DB (soft delete), just
-  // hidden until you switch this filter to Inactive to find/restore it.
-  const [statusFilter, setStatusFilter] = useState<'' | 'active' | 'inactive'>('active');
+  // Defaults to showing all statuses — a deactivated vehicle stays visible
+  // in the table with its Inactive badge rather than vanishing. Delete is
+  // the action that actually removes it from view (see deleted_at on the
+  // backend); this filter is just for browsing by status.
+  const [statusFilter, setStatusFilter] = useState<'' | 'active' | 'inactive'>('');
   const [editingVehicle, setEditingVehicle] = useState<AuthorizedVehicle | null>(null);
   const [viewingVehicle, setViewingVehicle] = useState<AuthorizedVehicle | null>(null);
   const [toggleTarget, setToggleTarget] = useState<AuthorizedVehicle | null>(null);
