@@ -75,6 +75,7 @@ export default function ActivityDetailModal({
           {record.dwellTime && <InfoRow label="Dwell Time" value={record.dwellTime} />}
           {record.note && <InfoRow label="Note" value={record.note} />}
           {vehicle?.owner_name && <InfoRow label="Owner" value={vehicle.owner_name} />}
+          {vehicle?.owner_employee_id && <InfoRow label="Employee ID" value={vehicle.owner_employee_id} />}
         </div>
       </div>
 
