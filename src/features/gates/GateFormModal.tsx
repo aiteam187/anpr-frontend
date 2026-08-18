@@ -45,8 +45,19 @@ export default function GateFormModal({ onClose, onSubmit }: GateFormModalProps)
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!form.camera_id || !form.gate_id || !form.gate_name) {
-      setError('Camera ID, Gate ID, and Gate Name are required');
+    if (
+      !form.camera_id ||
+      !form.gate_id ||
+      !form.gate_name ||
+      !form.camera_ip?.trim() ||
+      !form.stream_path?.trim() ||
+      !form.camera_rtsp_username?.trim() ||
+      !form.camera_rtsp_password ||
+      !form.camera_rtsp_path?.trim()
+    ) {
+      setError(
+        'Camera ID, Gate ID, Gate Name, Camera IP, Stream Path, and all RTSP fields are required — without them the camera has no way to actually start streaming.',
+      );
       return;
     }
     setSubmitting(true);
@@ -82,6 +93,64 @@ export default function GateFormModal({ onClose, onSubmit }: GateFormModalProps)
             placeholder="e.g. 1803001cce65"
           />
         </FormField>
+        <FormField label="Camera IP" required>
+          <input
+            className={inputClass}
+            value={form.camera_ip ?? ''}
+            onChange={(e) => update('camera_ip', e.target.value)}
+            onBlur={(e) => update('camera_ip', normalizeCameraIp(e.target.value))}
+            placeholder="e.g. 192.168.10.214"
+          />
+        </FormField>
+        <FormField label="Stream Path" required>
+          <input
+            className={inputClass}
+            value={form.stream_path ?? ''}
+            onChange={(e) => update('stream_path', e.target.value)}
+            placeholder="e.g. stream1 — the MediaMTX path name for this camera's live view"
+          />
+        </FormField>
+
+        <div>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+            Live View — required for streaming to actually work
+          </p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <FormField label="RTSP Username" required>
+              <input
+                className={inputClass}
+                value={form.camera_rtsp_username ?? ''}
+                onChange={(e) => update('camera_rtsp_username', e.target.value)}
+                placeholder="e.g. admin"
+              />
+            </FormField>
+            <FormField label="RTSP Password" required>
+              <input
+                type="password"
+                className={inputClass}
+                value={form.camera_rtsp_password ?? ''}
+                onChange={(e) => update('camera_rtsp_password', e.target.value)}
+              />
+            </FormField>
+            <FormField label="RTSP Port">
+              <input
+                type="number"
+                className={inputClass}
+                value={form.camera_rtsp_port ?? ''}
+                onChange={(e) => update('camera_rtsp_port', e.target.value ? Number(e.target.value) : null)}
+                placeholder="554"
+              />
+            </FormField>
+            <FormField label="RTSP Path" required>
+              <input
+                className={inputClass}
+                value={form.camera_rtsp_path ?? ''}
+                onChange={(e) => update('camera_rtsp_path', e.target.value)}
+                placeholder="e.g. live/main"
+              />
+            </FormField>
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <FormField label="Gate ID">
