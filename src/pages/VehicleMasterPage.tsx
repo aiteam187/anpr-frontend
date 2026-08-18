@@ -16,6 +16,7 @@ import BlacklistReasonModal from '../features/whitelist/BlacklistReasonModal';
 import VehicleInfoModal from '../features/whitelist/VehicleInfoModal';
 import SimpleMasterPage from '../features/masters/SimpleMasterPage';
 import VisitorTable from '../features/visitors/VisitorTable';
+import ExtendVisitorModal, { type VisitorExtendInput } from '../features/visitors/ExtendVisitorModal';
 import AddVisitorModal, { type NewVisitorInput } from '../features/visitors/AddVisitorModal';
 import EditVisitorModal, { type VisitorEditInput } from '../features/visitors/EditVisitorModal';
 import { LIST_TYPE_LABELS, LIST_TYPE_STYLES } from '../features/vehicleSearch/listTypeBadge';
@@ -1065,6 +1066,7 @@ function VisitorsTab({ vehicleTypes, fuelTypes }: { vehicleTypes: string[]; fuel
   const [statusFilter, setStatusFilter] = useState<'' | 'active' | 'inactive'>('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingVisitor, setEditingVisitor] = useState<AuthorizedVehicle | null>(null);
+  const [extendTarget, setExtendTarget] = useState<AuthorizedVehicle | null>(null);
   const [convertTarget, setConvertTarget] = useState<AuthorizedVehicle | null>(null);
   const [revokeTarget, setRevokeTarget] = useState<AuthorizedVehicle | null>(null);
 
@@ -1130,6 +1132,19 @@ function VisitorsTab({ vehicleTypes, fuelTypes }: { vehicleTypes: string[]; fuel
     });
     await updateVehicleDetails(editingVisitor.plate_number, input.details);
     setEditingVisitor(null);
+    await refresh();
+  };
+
+  const handleExtend = async (input: VisitorExtendInput) => {
+    if (!extendTarget) return;
+    await switchListType(extendTarget.plate_number, {
+      list_type: 'visitor',
+      visit_purpose: extendTarget.visit_purpose,
+      visiting_whom: extendTarget.visiting_whom,
+      valid_from: input.validFrom,
+      valid_until: input.validUntil,
+    });
+    setExtendTarget(null);
     await refresh();
   };
 
@@ -1200,6 +1215,7 @@ function VisitorsTab({ vehicleTypes, fuelTypes }: { vehicleTypes: string[]; fuel
             <VisitorTable
               visitors={pageItems}
               onEdit={setEditingVisitor}
+              onExtend={setExtendTarget}
               onConvertToPermanent={setConvertTarget}
               onRevoke={setRevokeTarget}
             />
@@ -1231,6 +1247,13 @@ function VisitorsTab({ vehicleTypes, fuelTypes }: { vehicleTypes: string[]; fuel
           fuelTypes={fuelTypes}
           onClose={() => setEditingVisitor(null)}
           onSubmit={handleEdit}
+        />
+      )}
+      {extendTarget && (
+        <ExtendVisitorModal
+          visitor={extendTarget}
+          onClose={() => setExtendTarget(null)}
+          onSubmit={handleExtend}
         />
       )}
       {convertTarget && (

@@ -92,7 +92,7 @@ export default function DashboardPage() {
             />
             <StatTile
               icon={DoorOpen}
-              label="Active Vehicles"
+              label="Inside Vehicles"
               value={data.activeVehicles.length}
               sublabel="Inside Gate"
               to="/monitoring/tracking"

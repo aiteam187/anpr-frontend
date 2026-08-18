@@ -1,4 +1,4 @@
-import { Pencil, Trash2, UserCheck } from 'lucide-react';
+import { Clock, Pencil, Trash2, UserCheck } from 'lucide-react';
 import { formatDateTime } from '../../utils/format';
 import { getVisitorStatus, VISITOR_STATUS_LABELS, VISITOR_STATUS_STYLES } from './visitorStatus';
 import type { AuthorizedVehicle } from '../../types/authorizedVehicle';
@@ -6,6 +6,7 @@ import type { AuthorizedVehicle } from '../../types/authorizedVehicle';
 interface VisitorTableProps {
   visitors: AuthorizedVehicle[];
   onEdit: (visitor: AuthorizedVehicle) => void;
+  onExtend: (visitor: AuthorizedVehicle) => void;
   onConvertToPermanent: (visitor: AuthorizedVehicle) => void;
   onRevoke: (visitor: AuthorizedVehicle) => void;
 }
@@ -13,6 +14,7 @@ interface VisitorTableProps {
 export default function VisitorTable({
   visitors,
   onEdit,
+  onExtend,
   onConvertToPermanent,
   onRevoke,
 }: VisitorTableProps) {
@@ -82,6 +84,14 @@ export default function VisitorTable({
                       title="Edit visitor"
                     >
                       <Pencil className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onExtend(v)}
+                      className="rounded-md p-1.5 text-amber-600 hover:bg-slate-100 hover:text-amber-700"
+                      title="Extend access — push out the valid-until time so entry/exit isn't blocked"
+                    >
+                      <Clock className="h-4 w-4" />
                     </button>
                     <button
                       type="button"

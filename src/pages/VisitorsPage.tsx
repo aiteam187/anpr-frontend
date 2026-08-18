@@ -12,6 +12,7 @@ import { usePagination } from '../hooks/usePagination';
 import VisitorTable from '../features/visitors/VisitorTable';
 import AddVisitorModal, { type NewVisitorInput } from '../features/visitors/AddVisitorModal';
 import EditVisitorModal, { type VisitorEditInput } from '../features/visitors/EditVisitorModal';
+import ExtendVisitorModal, { type VisitorExtendInput } from '../features/visitors/ExtendVisitorModal';
 import {
   addAuthorizedVehicle,
   getAuthorizedVehicles,
@@ -30,6 +31,7 @@ export default function VisitorsPage() {
   const [error, setError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingVisitor, setEditingVisitor] = useState<AuthorizedVehicle | null>(null);
+  const [extendTarget, setExtendTarget] = useState<AuthorizedVehicle | null>(null);
   const [convertTarget, setConvertTarget] = useState<AuthorizedVehicle | null>(null);
   const [revokeTarget, setRevokeTarget] = useState<AuthorizedVehicle | null>(null);
   const [query, setQuery] = useState('');
@@ -88,6 +90,19 @@ export default function VisitorsPage() {
     });
     await updateVehicleDetails(editingVisitor.plate_number, input.details);
     setEditingVisitor(null);
+    await refresh();
+  };
+
+  const handleExtend = async (input: VisitorExtendInput) => {
+    if (!extendTarget) return;
+    await switchListType(extendTarget.plate_number, {
+      list_type: 'visitor',
+      visit_purpose: extendTarget.visit_purpose,
+      visiting_whom: extendTarget.visiting_whom,
+      valid_from: input.validFrom,
+      valid_until: input.validUntil,
+    });
+    setExtendTarget(null);
     await refresh();
   };
 
@@ -184,6 +199,7 @@ export default function VisitorsPage() {
             <VisitorTable
               visitors={pageItems}
               onEdit={setEditingVisitor}
+              onExtend={setExtendTarget}
               onConvertToPermanent={setConvertTarget}
               onRevoke={setRevokeTarget}
             />
@@ -215,6 +231,13 @@ export default function VisitorsPage() {
           fuelTypes={fuelTypes}
           onClose={() => setEditingVisitor(null)}
           onSubmit={handleEdit}
+        />
+      )}
+      {extendTarget && (
+        <ExtendVisitorModal
+          visitor={extendTarget}
+          onClose={() => setExtendTarget(null)}
+          onSubmit={handleExtend}
         />
       )}
       {convertTarget && (

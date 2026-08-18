@@ -25,7 +25,7 @@ export default function DashboardSkeleton() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Panel title="Active Vehicles" className="lg:col-span-2">
+        <Panel title="Inside Vehicles" className="lg:col-span-2">
           <SkeletonTable columns={6} rows={4} />
         </Panel>
         <Panel title="Active Alerts">
