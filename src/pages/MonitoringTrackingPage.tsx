@@ -20,6 +20,15 @@ import { SkeletonTable } from '../components/ui/Skeleton';
 import { assetUrl } from '../services/api';
 import { formatDateTime, formatElapsed } from '../utils/format';
 import type { ExportKind } from '../services/exportsService';
+import { getRangeForPreset, localDateStr, type RangePreset } from '../utils/dateRange';
+
+const DATE_PRESETS: { value: Exclude<RangePreset, 'custom'>; label: string }[] = [
+  { value: 'today', label: 'Today' },
+  { value: 'yesterday', label: 'Yesterday' },
+  { value: '7d', label: '7 Days' },
+  { value: '30d', label: 'Last Month' },
+  { value: '90d', label: '3 Months' },
+];
 
 // No single backend export covers this page's merged entry+exit+
 // unauthorized timeline — map the current Event filter to whichever
@@ -91,6 +100,16 @@ export default function MonitoringTrackingPage() {
 
   const resetPage = () => setPage(1);
 
+  const [activePreset, setActivePreset] = useState<Exclude<RangePreset, 'custom'> | null>(null);
+
+  const applyPreset = (preset: Exclude<RangePreset, 'custom'>) => {
+    const range = getRangeForPreset(preset);
+    setStartDate(localDateStr(range.start));
+    setEndDate(localDateStr(range.end));
+    setActivePreset(preset);
+    resetPage();
+  };
+
   return (
     <div className="space-y-4">
       <PageHeader
@@ -99,6 +118,22 @@ export default function MonitoringTrackingPage() {
       />
 
       <Panel title="Filters" badge={<Filter className="h-3.5 w-3.5 text-slate-400" />}>
+        <div className="mb-3 flex flex-wrap items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1">
+          {DATE_PRESETS.map((p) => (
+            <button
+              key={p.value}
+              type="button"
+              onClick={() => applyPreset(p.value)}
+              className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                activePreset === p.value
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           <FormField label="Search Plate">
             <div className="relative">
@@ -154,6 +189,7 @@ export default function MonitoringTrackingPage() {
               value={startDate}
               onChange={(e) => {
                 setStartDate(e.target.value);
+                setActivePreset(null);
                 resetPage();
               }}
             />
@@ -165,6 +201,7 @@ export default function MonitoringTrackingPage() {
               value={endDate}
               onChange={(e) => {
                 setEndDate(e.target.value);
+                setActivePreset(null);
                 resetPage();
               }}
             />
@@ -178,6 +215,7 @@ export default function MonitoringTrackingPage() {
                 setGateFilter('');
                 setStartDate('');
                 setEndDate('');
+                setActivePreset(null);
                 resetPage();
               }}
               className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
