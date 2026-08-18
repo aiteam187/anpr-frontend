@@ -139,8 +139,12 @@ function EmployeesTab() {
     // toggle) rather than removing the row, so it's always recoverable and
     // never blocked by linked vehicles the way a hard delete would be.
     await deleteEmployee(deleteTarget.id, false);
+    // Unlike Disable (which re-fetches and stays visible with its badge),
+    // Delete removes it from view right away by dropping it from local
+    // state instead of refreshing — the row is still in the DB as disabled,
+    // just not shown here until you reload or explicitly filter for it.
+    setEmployees((prev) => prev.filter((e) => e.id !== deleteTarget.id));
     setDeleteTarget(null);
-    await refresh();
   };
 
   const filtered = useMemo(() => {
