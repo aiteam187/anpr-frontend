@@ -17,7 +17,7 @@ import type { UserAccount, UserCreatePayload, UserUpdatePayload } from '../types
 import type { Role } from '../types/roles';
 
 export default function UsersPage() {
-  const { token, user: currentUser } = useAuth();
+  const { token, user: currentUser, updateUser: updateAuthUser } = useAuth();
   const [users, setUsers] = useState<UserAccount[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
@@ -79,6 +79,15 @@ export default function UsersPage() {
   const handleUpdate = async (payload: UserUpdatePayload) => {
     if (!token || !editingUser) return;
     await updateUser(token, editingUser.id, payload);
+    // Editing your own account doesn't re-run login, so the navbar's cached
+    // name/role would otherwise keep showing whatever was true at login
+    // until the next one — patch the live session here instead.
+    if (currentUser && editingUser.id === currentUser.id) {
+      updateAuthUser({
+        ...(payload.full_name != null && { full_name: payload.full_name }),
+        ...(payload.role != null && { role: payload.role }),
+      });
+    }
     setEditingUser(null);
     await refresh();
   };

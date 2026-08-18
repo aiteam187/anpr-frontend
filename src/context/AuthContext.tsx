@@ -25,6 +25,11 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   login: (payload: LoginRequest) => Promise<void>;
   logout: () => void;
+  /** Patches the cached session user (e.g. full_name) after the logged-in
+   * account edits its own profile — without this, the navbar keeps showing
+   * whatever was true at login until the next login, since `user` is only
+   * ever set there. */
+  updateUser: (patch: Partial<AuthUser>) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -69,6 +74,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(null);
   }, []);
 
+  const updateUser = useCallback((patch: Partial<AuthUser>) => {
+    setSession((prev) => {
+      if (!prev) return prev;
+      const next: StoredSession = { ...prev, user: { ...prev.user, ...patch } };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
   useEffect(() => {
     registerUnauthorizedHandler(logout);
     return () => registerUnauthorizedHandler(null);
@@ -81,8 +95,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: !!session,
       login,
       logout,
+      updateUser,
     }),
-    [session, login, logout],
+    [session, login, logout, updateUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
