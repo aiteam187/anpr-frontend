@@ -180,6 +180,10 @@ function VehiclesTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [listTypeFilter, setListTypeFilter] = useState<ListType | ''>('');
+  // Defaults to Active so a deleted/deactivated vehicle disappears from the
+  // everyday view immediately — it's still in the DB (soft delete), just
+  // hidden until you switch this filter to Inactive to find/restore it.
+  const [statusFilter, setStatusFilter] = useState<'' | 'active' | 'inactive'>('active');
   const [editingVehicle, setEditingVehicle] = useState<AuthorizedVehicle | null>(null);
   const [viewingVehicle, setViewingVehicle] = useState<AuthorizedVehicle | null>(null);
   const [toggleTarget, setToggleTarget] = useState<AuthorizedVehicle | null>(null);
@@ -226,6 +230,8 @@ function VehiclesTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
     const q = query.trim().toUpperCase();
     return vehicles.filter((v) => {
       if (listTypeFilter && v.list_type !== listTypeFilter) return false;
+      if (statusFilter === 'active' && !v.is_active) return false;
+      if (statusFilter === 'inactive' && v.is_active) return false;
       if (!q) return true;
       return (
         v.plate_number.toUpperCase().includes(q) ||
@@ -234,14 +240,14 @@ function VehiclesTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
         (v.owner_phone ?? '').toUpperCase().includes(q)
       );
     });
-  }, [vehicles, query, listTypeFilter]);
+  }, [vehicles, query, listTypeFilter, statusFilter]);
 
   const { page, setPage, totalPages, pageItems, rangeStart, rangeEnd, totalCount, onPrev, onNext } =
     usePagination(filtered);
 
   useEffect(() => {
     setPage(1);
-  }, [query, listTypeFilter, setPage]);
+  }, [query, listTypeFilter, statusFilter, setPage]);
 
   const handleSaveDetails = async (payload: Parameters<typeof updateVehicleDetails>[1]) => {
     if (!editingVehicle) return;
@@ -328,6 +334,16 @@ function VehiclesTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
                   {f.label}
                 </option>
               ))}
+            </Select>
+            <Select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as '' | 'active' | 'inactive')}
+              fullWidth={false}
+              className="w-32"
+            >
+              <option value="">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
             </Select>
             <ExportControls
               kind="authorizedVehicles"
@@ -562,6 +578,10 @@ function AllowlistTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  // Defaults to Active so a deleted/deactivated vehicle disappears from the
+  // everyday view immediately — it's still in the DB (soft delete), just
+  // hidden until you switch this filter to Inactive to find/restore it.
+  const [statusFilter, setStatusFilter] = useState<'' | 'active' | 'inactive'>('active');
   const [editingVehicle, setEditingVehicle] = useState<AuthorizedVehicle | null>(null);
   const [viewingVehicle, setViewingVehicle] = useState<AuthorizedVehicle | null>(null);
   const [toggleTarget, setToggleTarget] = useState<AuthorizedVehicle | null>(null);
@@ -603,22 +623,25 @@ function AllowlistTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
 
   const filtered = useMemo(() => {
     const q = query.trim().toUpperCase();
-    if (!q) return vehicles;
-    return vehicles.filter(
-      (v) =>
+    return vehicles.filter((v) => {
+      if (statusFilter === 'active' && !v.is_active) return false;
+      if (statusFilter === 'inactive' && v.is_active) return false;
+      if (!q) return true;
+      return (
         v.plate_number.toUpperCase().includes(q) ||
         (v.owner_name ?? '').toUpperCase().includes(q) ||
         (v.owner_employee_id ?? '').toUpperCase().includes(q) ||
-        (v.owner_phone ?? '').toUpperCase().includes(q),
-    );
-  }, [vehicles, query]);
+        (v.owner_phone ?? '').toUpperCase().includes(q)
+      );
+    });
+  }, [vehicles, query, statusFilter]);
 
   const { page, setPage, totalPages, pageItems, rangeStart, rangeEnd, totalCount, onPrev, onNext } =
     usePagination(filtered);
 
   useEffect(() => {
     setPage(1);
-  }, [query, setPage]);
+  }, [query, statusFilter, setPage]);
 
   const handleSaveDetails = async (payload: Parameters<typeof updateVehicleDetails>[1]) => {
     if (!editingVehicle) return;
@@ -687,6 +710,16 @@ function AllowlistTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
                 placeholder="Plate, owner, employee ID, phone…"
               />
             </div>
+            <Select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as '' | 'active' | 'inactive')}
+              fullWidth={false}
+              className="w-32"
+            >
+              <option value="">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </Select>
             <ExportControls
               kind="authorizedVehicles"
               fallback="allowlist.csv"
