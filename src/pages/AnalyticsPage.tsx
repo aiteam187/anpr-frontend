@@ -105,13 +105,13 @@ export default function AnalyticsPage() {
       </Panel>
 
       {loading ? (
-        <SkeletonStatTiles count={6} gridClassName="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-4" />
+        <SkeletonStatTiles count={5} gridClassName="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5" />
       ) : error ? (
         <p className="py-6 text-center text-sm text-red-600">{error}</p>
       ) : summary ? (
         <>
           <FadeIn>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
               <StatTile icon={LogIn} label="Entries" value={summary.totals.entries} tone="success" />
               <StatTile icon={LogOut} label="Exits" value={summary.totals.exits} />
               <StatTile icon={Car} label="Currently Inside" value={summary.totals.currently_inside} />

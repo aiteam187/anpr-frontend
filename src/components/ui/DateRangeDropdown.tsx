@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Calendar, ChevronDown } from 'lucide-react';
 import type { RangePreset } from '../../utils/dateRange';
 
@@ -38,7 +39,9 @@ export default function DateRangeDropdown({
   const [open, setOpen] = useState(false);
   const [draftStart, setDraftStart] = useState(startDate);
   const [draftEnd, setDraftEnd] = useState(endDate);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   // Document-level listener instead of a full-viewport backdrop div — a
   // backdrop's "fixed" positioning silently breaks (scopes to the nearest
@@ -50,12 +53,41 @@ export default function DateRangeDropdown({
   useEffect(() => {
     if (!open) return;
     const handleClick = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(target) &&
+        !document.getElementById('date-range-dropdown-portal')?.contains(target)
+      ) {
         setOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
+  }, [open]);
+
+  // The menu is rendered via a portal straight onto <body> — some pages
+  // wrap this component in an ancestor that creates its own stacking
+  // context (a sidebar, a card with a transform, etc.), which silently
+  // traps a merely-high z-index inside that context and lets other fixed
+  // UI (like the sidebar) paint over it. A portal + fixed positioning
+  // computed from the trigger button's own screen position sidesteps that
+  // entirely — same "immune to ancestor CSS" approach already used above
+  // for outside-click detection.
+  useEffect(() => {
+    if (!open) return;
+    const updatePosition = () => {
+      const rect = buttonRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setMenuPos({ top: rect.bottom + 8, right: window.innerWidth - rect.right });
+    };
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
   }, [open]);
 
   const label =
@@ -68,6 +100,7 @@ export default function DateRangeDropdown({
   return (
     <div className="relative" ref={containerRef}>
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => {
           setDraftStart(startDate);
@@ -81,8 +114,14 @@ export default function DateRangeDropdown({
         <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
       </button>
 
-      {open && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-md border border-slate-200 bg-white p-2 shadow-lg">
+      {open &&
+        menuPos &&
+        createPortal(
+          <div
+            id="date-range-dropdown-portal"
+            style={{ position: 'fixed', top: menuPos.top, right: menuPos.right }}
+            className="z-[9999] w-56 rounded-md border border-slate-200 bg-white p-2 shadow-lg"
+          >
             {PRESETS.map((p) => (
               <button
                 key={p.value}
@@ -150,8 +189,9 @@ export default function DateRangeDropdown({
                 Clear (all time)
               </button>
             )}
-          </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
