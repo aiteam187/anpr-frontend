@@ -156,7 +156,12 @@ export default function UsersPage() {
           <p className="py-6 text-center text-sm text-red-600">{error}</p>
         ) : (
           <>
-            <UsersTable users={pageItems} currentUserId={currentUser?.id} onEdit={setEditingUser} />
+            <UsersTable
+              users={pageItems}
+              currentUserId={currentUser?.id}
+              currentUserRole={currentUser?.role}
+              onEdit={setEditingUser}
+            />
             <Pagination
               page={page}
               totalPages={totalPages}

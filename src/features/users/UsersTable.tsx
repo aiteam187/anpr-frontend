@@ -5,10 +5,11 @@ import type { UserAccount } from '../../types/auth';
 interface UsersTableProps {
   users: UserAccount[];
   currentUserId: number | undefined;
+  currentUserRole: string | undefined;
   onEdit: (user: UserAccount) => void;
 }
 
-export default function UsersTable({ users, currentUserId, onEdit }: UsersTableProps) {
+export default function UsersTable({ users, currentUserId, currentUserRole, onEdit }: UsersTableProps) {
   return (
     <div className="max-h-[60vh] overflow-auto">
       <table className="w-full text-left text-sm">
@@ -30,13 +31,18 @@ export default function UsersTable({ users, currentUserId, onEdit }: UsersTableP
               </td>
             </tr>
           )}
-          {users.map((u) => (
+          {users.map((u) => {
+            const locked = u.role === 'developer' && currentUserRole !== 'developer';
+            return (
             <tr key={u.id} className="border-t border-slate-200">
               <td className="py-2.5">
                 <p className="font-medium text-slate-900">
                   {u.full_name}
                   {u.id === currentUserId && (
                     <span className="ml-1.5 text-xs font-normal text-slate-400">(you)</span>
+                  )}
+                  {locked && (
+                    <span className="ml-1.5 text-xs font-normal text-slate-400">(developer-managed only)</span>
                   )}
                 </p>
                 <p className="text-xs text-slate-400">@{u.username}</p>
@@ -61,14 +67,16 @@ export default function UsersTable({ users, currentUserId, onEdit }: UsersTableP
                 <button
                   type="button"
                   onClick={() => onEdit(u)}
-                  className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                  disabled={locked}
+                  className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-transparent"
                   title="Edit"
                 >
                   <Pencil className="h-4 w-4" />
                 </button>
               </td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>

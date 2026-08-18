@@ -16,6 +16,7 @@ import {
   updateRole,
   updateRolePermissions,
 } from '../services/rolesService';
+import { useAuth } from '../context/AuthContext';
 import type { Role, RolePermissionEntry } from '../types/roles';
 
 const RESOURCE_LABELS: Record<string, string> = {
@@ -36,6 +37,7 @@ const RESOURCE_LABELS: Record<string, string> = {
 };
 
 export default function RoleMasterPage() {
+  const { user: currentUser } = useAuth();
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -122,9 +124,16 @@ export default function RoleMasterPage() {
                 </tr>
               </thead>
               <tbody>
-                {pageItems.map((role) => (
+                {pageItems.map((role) => {
+                  const locked = role.name === 'developer' && currentUser?.role !== 'developer';
+                  return (
                   <tr key={role.id} className="border-t border-slate-200">
-                    <td className="py-2.5 font-medium capitalize text-slate-900">{role.name}</td>
+                    <td className="py-2.5 font-medium capitalize text-slate-900">
+                      {role.name}
+                      {locked && (
+                        <span className="ml-2 text-xs font-normal text-slate-400">(developer-managed only)</span>
+                      )}
+                    </td>
                     <td className="py-2.5">
                       {role.enabled ? (
                         <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
@@ -141,7 +150,8 @@ export default function RoleMasterPage() {
                         <button
                           type="button"
                           onClick={() => setPermissionsFor(role)}
-                          className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50"
+                          disabled={locked}
+                          className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50 disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-transparent"
                           title="Edit permissions"
                         >
                           <KeyRound className="h-3.5 w-3.5" />
@@ -150,7 +160,8 @@ export default function RoleMasterPage() {
                         <button
                           type="button"
                           onClick={() => setEditingRole(role)}
-                          className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                          disabled={locked}
+                          className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-transparent"
                           title="Rename"
                         >
                           <Pencil className="h-4 w-4" />
@@ -158,14 +169,16 @@ export default function RoleMasterPage() {
                         <button
                           type="button"
                           onClick={() => handleToggleEnabled(role)}
-                          className="rounded-md px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
+                          disabled={locked}
+                          className="rounded-md px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-transparent"
                         >
                           {role.enabled ? 'Disable' : 'Enable'}
                         </button>
                         <button
                           type="button"
                           onClick={() => setDeleteTarget(role)}
-                          className="rounded-md p-1.5 text-red-600 hover:bg-slate-100 hover:text-red-700"
+                          disabled={locked}
+                          className="rounded-md p-1.5 text-red-600 hover:bg-slate-100 hover:text-red-700 disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-transparent"
                           title="Delete permanently"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -173,7 +186,8 @@ export default function RoleMasterPage() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

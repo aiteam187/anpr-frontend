@@ -4,18 +4,26 @@ import FormField, { inputClass } from '../../components/ui/FormField';
 import Select from '../../components/ui/Select';
 import { validatePassword, validatePhone, validateRequired, validateUsername } from '../../utils/validation';
 import { getRoles } from '../../services/rolesService';
+import { useAuth } from '../../context/AuthContext';
 import type { Role } from '../../types/roles';
 import type { UserAccount, UserCreatePayload, UserUpdatePayload } from '../../types/auth';
 
-/** Enabled roles a user can be assigned, fetched from the Role Master rather than hardcoded — roles are created/renamed dynamically via /admin/roles. */
+/** Enabled roles a user can be assigned, fetched from the Role Master rather
+ * than hardcoded — roles are created/renamed dynamically via /admin/roles.
+ * "developer" is excluded unless the caller is already a developer — the
+ * backend rejects assigning it otherwise (see _guard_developer_role), this
+ * just keeps it out of the dropdown so that 403 is never hit in the first
+ * place. */
 function useAssignableRoles(): Role[] {
+  const { user: currentUser } = useAuth();
   const [roles, setRoles] = useState<Role[]>([]);
   useEffect(() => {
     getRoles()
       .then((res) => setRoles(res.filter((r) => r.enabled)))
       .catch(() => setRoles([]));
   }, []);
-  return roles;
+  if (currentUser?.role === 'developer') return roles;
+  return roles.filter((r) => r.name !== 'developer');
 }
 
 interface UserFormModalProps {
