@@ -64,7 +64,7 @@ export function buildActivityRecords(
       eventType: 'unauthorized' as const,
       time: u.timestamp,
       camId: u.cam_id,
-      imageUrl: null,
+      imageUrl: u.image_url,
       confidence: u.confidence,
       plateVal: null,
       dwellTime: null,

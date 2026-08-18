@@ -41,6 +41,7 @@ export interface UnauthorizedAttempt {
   confidence: number | null;
   cam_id: string;
   reason: string | null;
+  image_url: string | null;
 }
 
 export interface VehicleEventPayload {
