@@ -132,7 +132,10 @@ function EmployeesTab() {
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
-    await deleteEmployee(deleteTarget.id, true);
+    // Soft delete only — deactivates the record (same as the Disable
+    // toggle) rather than removing the row, so it's always recoverable and
+    // never blocked by linked vehicles the way a hard delete would be.
+    await deleteEmployee(deleteTarget.id, false);
     setDeleteTarget(null);
     await refresh();
   };
@@ -287,7 +290,7 @@ function EmployeesTab() {
                           type="button"
                           onClick={() => setDeleteTarget(employee)}
                           className="rounded-md p-1.5 text-red-600 hover:bg-slate-100 hover:text-red-700"
-                          title="Delete permanently"
+                          title="Delete"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -329,9 +332,9 @@ function EmployeesTab() {
       )}
       {deleteTarget && (
         <ConfirmDialog
-          title="Delete Employee Permanently"
-          message={`Permanently delete ${deleteTarget.name} (${deleteTarget.employee_code})? This cannot be undone.`}
-          confirmLabel="Delete Permanently"
+          title="Delete Employee"
+          message={`Delete ${deleteTarget.name} (${deleteTarget.employee_code})? Their record is deactivated, not erased — vehicles/history stay intact and this can be reversed via Enable.`}
+          confirmLabel="Delete"
           danger
           onConfirm={handleDelete}
           onClose={() => setDeleteTarget(null)}

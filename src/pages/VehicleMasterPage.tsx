@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Ban, Eye, Link2, Pencil, Plus, Power, RotateCcw, Search, UploadCloud } from 'lucide-react';
+import { Ban, Eye, Link2, Pencil, Plus, Power, RotateCcw, Search, Trash2, UploadCloud } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import Panel from '../components/ui/Panel';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
@@ -184,6 +184,7 @@ function VehiclesTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
   const [toggleTarget, setToggleTarget] = useState<AuthorizedVehicle | null>(null);
   const [blacklistTarget, setBlacklistTarget] = useState<AuthorizedVehicle | null>(null);
   const [restoreTarget, setRestoreTarget] = useState<AuthorizedVehicle | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<AuthorizedVehicle | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
@@ -207,6 +208,16 @@ function VehiclesTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
   const handleAddVehicle = async (payload: Parameters<typeof addAuthorizedVehicle>[0]) => {
     await addAuthorizedVehicle(payload);
     setShowAddModal(false);
+    await refresh();
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    // Soft delete — deactivates the record (row is kept for audit/history,
+    // same underlying effect as the Deactivate toggle above) rather than
+    // removing it.
+    await revokeAuthorizedVehicle(deleteTarget.plate_number);
+    setDeleteTarget(null);
     await refresh();
   };
 
@@ -436,6 +447,16 @@ function VehiclesTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
                             <RotateCcw className="h-4 w-4" />
                           </button>
                         )}
+                        {v.list_type !== 'blacklist' && (
+                          <button
+                            type="button"
+                            onClick={() => setDeleteTarget(v)}
+                            className="rounded-md p-1.5 text-red-600 hover:bg-slate-100 hover:text-red-700"
+                            title="Delete"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -516,6 +537,16 @@ function VehiclesTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
           onClose={() => setRestoreTarget(null)}
         />
       )}
+      {deleteTarget && (
+        <ConfirmDialog
+          title="Delete Vehicle"
+          message={`Delete ${deleteTarget.plate_number}? It's deactivated, not erased — the record and its history stay intact and this can be reversed by reactivating it.`}
+          confirmLabel="Delete"
+          danger
+          onConfirm={handleDelete}
+          onClose={() => setDeleteTarget(null)}
+        />
+      )}
     </div>
   );
 }
@@ -529,6 +560,7 @@ function AllowlistTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
   const [viewingVehicle, setViewingVehicle] = useState<AuthorizedVehicle | null>(null);
   const [toggleTarget, setToggleTarget] = useState<AuthorizedVehicle | null>(null);
   const [blacklistTarget, setBlacklistTarget] = useState<AuthorizedVehicle | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<AuthorizedVehicle | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
@@ -552,6 +584,14 @@ function AllowlistTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
   const handleAddVehicle = async (payload: Parameters<typeof addAuthorizedVehicle>[0]) => {
     await addAuthorizedVehicle(payload);
     setShowAddModal(false);
+    await refresh();
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    // Soft delete — deactivates the record rather than removing it.
+    await revokeAuthorizedVehicle(deleteTarget.plate_number);
+    setDeleteTarget(null);
     await refresh();
   };
 
@@ -738,6 +778,14 @@ function AllowlistTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
                         >
                           <Ban className="h-4 w-4" />
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeleteTarget(v)}
+                          className="rounded-md p-1.5 text-red-600 hover:bg-slate-100 hover:text-red-700"
+                          title="Delete"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -807,6 +855,16 @@ function AllowlistTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
           plateNumber={blacklistTarget.plate_number}
           onClose={() => setBlacklistTarget(null)}
           onSubmit={handleBlacklist}
+        />
+      )}
+      {deleteTarget && (
+        <ConfirmDialog
+          title="Delete Vehicle"
+          message={`Delete ${deleteTarget.plate_number}? It's deactivated, not erased — the record and its history stay intact and this can be reversed by reactivating it.`}
+          confirmLabel="Delete"
+          danger
+          onConfirm={handleDelete}
+          onClose={() => setDeleteTarget(null)}
         />
       )}
     </div>
