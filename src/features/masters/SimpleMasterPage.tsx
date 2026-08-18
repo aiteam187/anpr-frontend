@@ -150,8 +150,13 @@ export default function SimpleMasterPage({ title, description, itemLabel, api }:
                         <button
                           type="button"
                           onClick={() => setDeleteTarget(item)}
-                          className="rounded-md p-1.5 text-red-600 hover:bg-slate-100 hover:text-red-700"
-                          title="Delete permanently"
+                          disabled={item.enabled}
+                          className={`rounded-md p-1.5 ${
+                            item.enabled
+                              ? 'cursor-not-allowed text-slate-300'
+                              : 'text-red-600 hover:bg-slate-100 hover:text-red-700'
+                          }`}
+                          title={item.enabled ? 'Disable first, then Delete' : 'Delete permanently'}
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
