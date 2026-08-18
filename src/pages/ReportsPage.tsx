@@ -96,7 +96,7 @@ interface ReportDef {
 }
 
 const TABS: ReportDef[] = [
-  { id: 'activeVehicles', kind: 'activeVehicles', label: 'Active Vehicles', fallback: 'active_vehicles.csv' },
+  { id: 'activeVehicles', kind: 'activeVehicles', label: 'Inside Vehicles', fallback: 'active_vehicles.csv' },
   { id: 'history', kind: 'history', label: 'Entry/Exit History', fallback: 'vehicle_history.csv' },
   { id: 'whitelist', kind: 'authorizedVehicles', label: 'Whitelist', fallback: 'whitelist.csv' },
   { id: 'blacklist', kind: 'authorizedVehicles', label: 'Blacklist', fallback: 'blacklist.csv' },
