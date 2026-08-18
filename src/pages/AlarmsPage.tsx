@@ -3,7 +3,7 @@ import { AlertTriangle, Download, ShieldAlert } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import Panel from '../components/ui/Panel';
 import Select from '../components/ui/Select';
-import CustomRangeDropdown from '../components/ui/CustomRangeDropdown';
+import DateRangeDropdown from '../components/ui/DateRangeDropdown';
 import StatTile from '../features/dashboard/StatTile';
 import { SkeletonList, SkeletonStatTiles } from '../components/ui/Skeleton';
 import ReportTable, { type ReportColumn } from '../features/reports/ReportTable';
@@ -283,13 +283,25 @@ export default function AlarmsPage() {
             filter={historyFilter}
             extraControls={
               <>
-                <CustomRangeDropdown
-                  preset={rangePreset}
-                  customFrom={customFrom}
-                  customTo={customTo}
-                  onPresetChange={setRangePreset}
-                  onCustomFromChange={setCustomFrom}
-                  onCustomToChange={setCustomTo}
+                <DateRangeDropdown
+                  preset={rangePreset === 'all' ? null : rangePreset === 'range' ? 'custom' : rangePreset}
+                  startDate={customFrom}
+                  endDate={customTo}
+                  onPreset={(p) => {
+                    setRangePreset(p);
+                    setCustomFrom('');
+                    setCustomTo('');
+                  }}
+                  onCustomRange={(start, end) => {
+                    setCustomFrom(start);
+                    setCustomTo(end);
+                    setRangePreset('range');
+                  }}
+                  onClear={() => {
+                    setRangePreset('all');
+                    setCustomFrom('');
+                    setCustomTo('');
+                  }}
                 />
                 <Select
                   value={severityFilter}
@@ -301,15 +313,14 @@ export default function AlarmsPage() {
                   <option value="critical">Critical</option>
                   <option value="warning">Warning</option>
                 </Select>
-                {filtersActive && (
-                  <button
-                    type="button"
-                    onClick={clearFilters}
-                    className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
-                  >
-                    Clear
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  disabled={!filtersActive}
+                  className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Clear filters
+                </button>
               </>
             }
           />

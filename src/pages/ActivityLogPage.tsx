@@ -5,10 +5,12 @@ import Panel from '../components/ui/Panel';
 import FormField, { inputClass } from '../components/ui/FormField';
 import Select from '../components/ui/Select';
 import { SkeletonTable } from '../components/ui/Skeleton';
+import DateRangeDropdown from '../components/ui/DateRangeDropdown';
 import { categoryLabel, categoryStyle } from '../features/activityLog/categoryMeta';
 import { getActivityLog } from '../services/activityLogService';
 import { downloadExport, type ExportFormat } from '../services/exportsService';
 import { formatDateTime } from '../utils/format';
+import { getRangeForPreset, localDateStr, type RangePreset } from '../utils/dateRange';
 import type { ActivityLogEntry } from '../types/activityLog';
 
 const FORMAT_OPTIONS: { value: ExportFormat; label: string }[] = [
@@ -68,6 +70,7 @@ export default function ActivityLogPage() {
   const [category, setCategory] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [activePreset, setActivePreset] = useState<Exclude<RangePreset, 'custom'> | 'custom' | null>(null);
   const [target, setTarget] = useState('');
   const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -104,6 +107,28 @@ export default function ActivityLogPage() {
 
   const handleFilterChange = () => setOffset(0);
 
+  const applyPreset = (preset: Exclude<RangePreset, 'custom'>) => {
+    const range = getRangeForPreset(preset);
+    setStartDate(localDateStr(range.start));
+    setEndDate(localDateStr(range.end));
+    setActivePreset(preset);
+    handleFilterChange();
+  };
+
+  const applyCustomRange = (start: string, end: string) => {
+    setStartDate(start);
+    setEndDate(end);
+    setActivePreset('custom');
+    handleFilterChange();
+  };
+
+  const clearDateFilter = () => {
+    setStartDate('');
+    setEndDate('');
+    setActivePreset(null);
+    handleFilterChange();
+  };
+
   const handleDownload = async () => {
     setDownloading(true);
     setDownloadError(null);
@@ -135,7 +160,7 @@ export default function ActivityLogPage() {
         title="Filters"
         badge={<Filter className="h-3.5 w-3.5 text-slate-400" />}
       >
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-5">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
           <FormField label="Search (plate, emp ID, gate…)">
             <div className="relative">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -166,26 +191,14 @@ export default function ActivityLogPage() {
               ))}
             </Select>
           </FormField>
-          <FormField label="From">
-            <input
-              type="date"
-              className={inputClass}
-              value={startDate}
-              onChange={(e) => {
-                setStartDate(e.target.value);
-                handleFilterChange();
-              }}
-            />
-          </FormField>
-          <FormField label="To">
-            <input
-              type="date"
-              className={inputClass}
-              value={endDate}
-              onChange={(e) => {
-                setEndDate(e.target.value);
-                handleFilterChange();
-              }}
+          <FormField label="Date Range">
+            <DateRangeDropdown
+              preset={activePreset}
+              startDate={startDate}
+              endDate={endDate}
+              onPreset={applyPreset}
+              onCustomRange={applyCustomRange}
+              onClear={clearDateFilter}
             />
           </FormField>
           <div className="flex items-end">
@@ -195,6 +208,7 @@ export default function ActivityLogPage() {
                 setCategory('');
                 setStartDate('');
                 setEndDate('');
+                setActivePreset(null);
                 setTarget('');
                 setOffset(0);
               }}

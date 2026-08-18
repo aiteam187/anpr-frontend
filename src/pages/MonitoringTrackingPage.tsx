@@ -183,20 +183,19 @@ export default function MonitoringTrackingPage() {
                 onCustomRange={applyCustomRange}
                 onClear={clearDateFilter}
               />
-              {(query || eventFilter || gateFilter || activePreset) && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setQuery('');
-                    setEventFilter('');
-                    setGateFilter('');
-                    clearDateFilter();
-                  }}
-                  className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
-                >
-                  Clear
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setQuery('');
+                  setEventFilter('');
+                  setGateFilter('');
+                  clearDateFilter();
+                }}
+                disabled={!(query || eventFilter || gateFilter || activePreset)}
+                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Clear filters
+              </button>
             </div>
           </FormField>
         </div>

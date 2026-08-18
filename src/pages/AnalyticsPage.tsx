@@ -5,34 +5,20 @@ import Panel from '../components/ui/Panel';
 import FadeIn from '../components/ui/FadeIn';
 import StatTile from '../features/dashboard/StatTile';
 import { SkeletonStatTiles } from '../components/ui/Skeleton';
-import { inputClass } from '../components/ui/FormField';
+import DateRangeDropdown from '../components/ui/DateRangeDropdown';
 import TrafficByDayChart from '../features/analytics/charts/TrafficByDayChart';
 import TrafficByHourChart from '../features/analytics/charts/TrafficByHourChart';
 import VehicleTypeDonut from '../features/analytics/charts/VehicleTypeDonut';
 import { getAnalyticsSummary } from '../services/analyticsService';
+import { getRangeForPreset, localDateStr, type RangePreset } from '../utils/dateRange';
 import type { AnalyticsSummary } from '../types/analytics';
 
-type Preset = 'today' | '7d' | '30d' | 'custom';
-
-function presetRange(preset: Preset): { start: string; end: string } {
-  const now = new Date();
-  const end = now.toISOString().slice(0, 10);
-  const start = new Date(now);
-  if (preset === 'today') {
-    // start stays as today
-  } else if (preset === '7d') {
-    start.setDate(start.getDate() - 6);
-  } else if (preset === '30d') {
-    start.setDate(start.getDate() - 29);
-  }
-  return { start: start.toISOString().slice(0, 10), end };
-}
+const INITIAL = getRangeForPreset('today');
 
 export default function AnalyticsPage() {
-  const [preset, setPreset] = useState<Preset>('today');
-  const initial = presetRange('today');
-  const [startDate, setStartDate] = useState(initial.start);
-  const [endDate, setEndDate] = useState(initial.end);
+  const [activePreset, setActivePreset] = useState<Exclude<RangePreset, 'custom'> | 'custom' | null>('today');
+  const [startDate, setStartDate] = useState(localDateStr(INITIAL.start));
+  const [endDate, setEndDate] = useState(localDateStr(INITIAL.end));
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,8 +27,8 @@ export default function AnalyticsPage() {
     setLoading(true);
     try {
       const res = await getAnalyticsSummary({
-        start_date: `${start}T00:00:00`,
-        end_date: `${end}T23:59:59`,
+        start_date: start ? `${start}T00:00:00` : undefined,
+        end_date: end ? `${end}T23:59:59` : undefined,
       });
       setSummary(res);
       setError(null);
@@ -58,18 +44,28 @@ export default function AnalyticsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const applyPreset = (p: Preset) => {
-    setPreset(p);
-    if (p === 'custom') return;
-    const range = presetRange(p);
-    setStartDate(range.start);
-    setEndDate(range.end);
-    refresh(range.start, range.end);
+  const applyPreset = (preset: Exclude<RangePreset, 'custom'>) => {
+    const range = getRangeForPreset(preset);
+    const start = localDateStr(range.start);
+    const end = localDateStr(range.end);
+    setStartDate(start);
+    setEndDate(end);
+    setActivePreset(preset);
+    refresh(start, end);
   };
 
-  const applyCustomRange = () => {
-    setPreset('custom');
-    refresh(startDate, endDate);
+  const applyCustomRange = (start: string, end: string) => {
+    setStartDate(start);
+    setEndDate(end);
+    setActivePreset('custom');
+    refresh(start, end);
+  };
+
+  const clearDateFilter = () => {
+    setStartDate('');
+    setEndDate('');
+    setActivePreset(null);
+    refresh('', '');
   };
 
   const peakHourLabel = summary?.peak_hour
@@ -88,43 +84,23 @@ export default function AnalyticsPage() {
           </span>
         }
       >
-        <div className="flex flex-wrap items-center gap-2">
-          {(['today', '7d', '30d'] as Preset[]).map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => applyPreset(p)}
-              className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-                preset === p
-                  ? 'bg-blue-600 text-white'
-                  : 'border border-slate-300 text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              {p === 'today' ? 'Today' : p === '7d' ? 'Last 7 Days' : 'Last 30 Days'}
-            </button>
-          ))}
-          <div className="ml-auto flex items-center gap-2">
-            <input
-              type="date"
-              className={inputClass}
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-            />
-            <span className="text-sm text-slate-400">to</span>
-            <input
-              type="date"
-              className={inputClass}
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-            />
-            <button
-              type="button"
-              onClick={applyCustomRange}
-              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
-            >
-              Apply
-            </button>
-          </div>
+        <div className="flex items-center gap-2">
+          <DateRangeDropdown
+            preset={activePreset}
+            startDate={startDate}
+            endDate={endDate}
+            onPreset={applyPreset}
+            onCustomRange={applyCustomRange}
+            onClear={clearDateFilter}
+          />
+          <button
+            type="button"
+            onClick={clearDateFilter}
+            disabled={activePreset === null}
+            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Clear filters
+          </button>
         </div>
       </Panel>
 
