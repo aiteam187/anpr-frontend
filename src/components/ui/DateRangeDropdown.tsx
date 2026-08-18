@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Calendar, ChevronDown } from 'lucide-react';
 import type { RangePreset } from '../../utils/dateRange';
 
@@ -38,6 +38,25 @@ export default function DateRangeDropdown({
   const [open, setOpen] = useState(false);
   const [draftStart, setDraftStart] = useState(startDate);
   const [draftEnd, setDraftEnd] = useState(endDate);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Document-level listener instead of a full-viewport backdrop div — a
+  // backdrop's "fixed" positioning silently breaks (scopes to the nearest
+  // ancestor with a transform/filter/will-change instead of the viewport)
+  // depending on what wraps this component on a given page, which is
+  // exactly the kind of thing that made "click outside to close" flaky
+  // here. Listening on the document and checking containment is immune to
+  // that — works regardless of any ancestor's CSS.
+  useEffect(() => {
+    if (!open) return;
+    const handleClick = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [open]);
 
   const label =
     preset === 'custom' && startDate && endDate
@@ -47,7 +66,7 @@ export default function DateRangeDropdown({
         : 'All Time';
 
   return (
-    <div className="relative">
+    <div className="relative" ref={containerRef}>
       <button
         type="button"
         onClick={() => {
@@ -63,9 +82,7 @@ export default function DateRangeDropdown({
       </button>
 
       {open && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-md border border-slate-200 bg-white p-2 shadow-lg">
+        <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-md border border-slate-200 bg-white p-2 shadow-lg">
             {PRESETS.map((p) => (
               <button
                 key={p.value}
@@ -134,7 +151,6 @@ export default function DateRangeDropdown({
               </button>
             )}
           </div>
-        </>
       )}
     </div>
   );
