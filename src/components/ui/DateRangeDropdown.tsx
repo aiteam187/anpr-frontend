@@ -65,7 +65,7 @@ export default function DateRangeDropdown({
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 top-full z-50 mt-2 w-64 rounded-md border border-slate-200 bg-white p-2 shadow-lg">
+          <div className="absolute right-0 top-full z-50 mt-2 w-80 rounded-md border border-slate-200 bg-white p-2 shadow-lg">
             {PRESETS.map((p) => (
               <button
                 key={p.value}
@@ -86,22 +86,27 @@ export default function DateRangeDropdown({
 
             <div className="mt-1 space-y-2 border-t border-slate-100 pt-2">
               <p className="px-1 text-xs font-medium text-slate-400">Custom Range</p>
-              <div className="flex items-center gap-2 px-1">
-                <input
-                  type="date"
-                  value={draftStart}
-                  max={draftEnd || undefined}
-                  onChange={(e) => setDraftStart(e.target.value)}
-                  className="w-full rounded-md border border-slate-300 px-2 py-1 text-xs"
-                />
-                <span className="text-slate-400">–</span>
-                <input
-                  type="date"
-                  value={draftEnd}
-                  min={draftStart || undefined}
-                  onChange={(e) => setDraftEnd(e.target.value)}
-                  className="w-full rounded-md border border-slate-300 px-2 py-1 text-xs"
-                />
+              <div className="space-y-1.5 px-1">
+                <label className="block">
+                  <span className="mb-0.5 block text-xs text-slate-500">From</span>
+                  <input
+                    type="date"
+                    value={draftStart}
+                    max={draftEnd || undefined}
+                    onChange={(e) => setDraftStart(e.target.value)}
+                    className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-0.5 block text-xs text-slate-500">To</span>
+                  <input
+                    type="date"
+                    value={draftEnd}
+                    min={draftStart || undefined}
+                    onChange={(e) => setDraftEnd(e.target.value)}
+                    className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+                  />
+                </label>
               </div>
               <button
                 type="button"
