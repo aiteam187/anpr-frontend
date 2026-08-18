@@ -278,7 +278,19 @@ export default function ReportsPage() {
     setDownloading(true);
     setError(null);
     try {
-      await downloadExport(activeTab.kind, activeTab.fallback, format);
+      // Export exactly what's on screen: same timeline filter as the
+      // DateRangeDropdown above the table, plus the list_type for tabs
+      // backed by the shared authorizedVehicles export endpoint (without
+      // this, Whitelist/Blacklist/Visitor would all export every list mixed
+      // together instead of just their own).
+      const params: Record<string, string | undefined> = {
+        start_date: dateRangeMs.start !== null ? new Date(dateRangeMs.start).toISOString() : undefined,
+        end_date: dateRangeMs.end !== null ? new Date(dateRangeMs.end).toISOString() : undefined,
+      };
+      if (tab === 'whitelist' || tab === 'blacklist' || tab === 'visitor') {
+        params.list_type = tab === 'whitelist' ? 'whitelist' : tab === 'blacklist' ? 'blacklist' : 'visitor';
+      }
+      await downloadExport(activeTab.kind, activeTab.fallback, format, params);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Download failed');
     } finally {
