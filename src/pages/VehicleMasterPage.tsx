@@ -1067,7 +1067,7 @@ function VisitorsTab({ vehicleTypes, fuelTypes }: { vehicleTypes: string[]; fuel
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingVisitor, setEditingVisitor] = useState<AuthorizedVehicle | null>(null);
   const [extendTarget, setExtendTarget] = useState<AuthorizedVehicle | null>(null);
-  const [convertTarget, setConvertTarget] = useState<AuthorizedVehicle | null>(null);
+  const [toggleTarget, setToggleTarget] = useState<AuthorizedVehicle | null>(null);
   const [revokeTarget, setRevokeTarget] = useState<AuthorizedVehicle | null>(null);
 
   const refresh = useCallback(async () => {
@@ -1148,10 +1148,14 @@ function VisitorsTab({ vehicleTypes, fuelTypes }: { vehicleTypes: string[]; fuel
     await refresh();
   };
 
-  const handleConvertToPermanent = async () => {
-    if (!convertTarget) return;
-    await switchListType(convertTarget.plate_number, { list_type: 'whitelist' });
-    setConvertTarget(null);
+  const handleToggleActive = async () => {
+    if (!toggleTarget) return;
+    if (toggleTarget.is_active) {
+      await deactivateAuthorizedVehicle(toggleTarget.plate_number);
+    } else {
+      await activateAuthorizedVehicle(toggleTarget.plate_number);
+    }
+    setToggleTarget(null);
     await refresh();
   };
 
@@ -1216,7 +1220,7 @@ function VisitorsTab({ vehicleTypes, fuelTypes }: { vehicleTypes: string[]; fuel
               visitors={pageItems}
               onEdit={setEditingVisitor}
               onExtend={setExtendTarget}
-              onConvertToPermanent={setConvertTarget}
+              onToggleActive={setToggleTarget}
               onRevoke={setRevokeTarget}
             />
             <Pagination
@@ -1256,13 +1260,18 @@ function VisitorsTab({ vehicleTypes, fuelTypes }: { vehicleTypes: string[]; fuel
           onSubmit={handleExtend}
         />
       )}
-      {convertTarget && (
+      {toggleTarget && (
         <ConfirmDialog
-          title="Convert to Permanent"
-          message={`Move ${convertTarget.plate_number} from visitor access to the permanent whitelist? It will no longer expire.`}
-          confirmLabel="Convert"
-          onConfirm={handleConvertToPermanent}
-          onClose={() => setConvertTarget(null)}
+          title={toggleTarget.is_active ? 'Revoke Visitor' : 'Approve Visitor'}
+          message={
+            toggleTarget.is_active
+              ? `Revoke ${toggleTarget.plate_number}? They won't be able to enter or exit until approved again.`
+              : `Approve ${toggleTarget.plate_number}? They'll be able to enter and exit again.`
+          }
+          confirmLabel={toggleTarget.is_active ? 'Revoke' : 'Approve'}
+          danger={toggleTarget.is_active}
+          onConfirm={handleToggleActive}
+          onClose={() => setToggleTarget(null)}
         />
       )}
       {revokeTarget && (

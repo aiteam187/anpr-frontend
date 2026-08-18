@@ -1,4 +1,4 @@
-import { Clock, Pencil, Trash2, UserCheck } from 'lucide-react';
+import { Clock, Pencil, Power, Trash2 } from 'lucide-react';
 import { formatDateTime } from '../../utils/format';
 import { getVisitorStatus, VISITOR_STATUS_LABELS, VISITOR_STATUS_STYLES } from './visitorStatus';
 import type { AuthorizedVehicle } from '../../types/authorizedVehicle';
@@ -7,7 +7,7 @@ interface VisitorTableProps {
   visitors: AuthorizedVehicle[];
   onEdit: (visitor: AuthorizedVehicle) => void;
   onExtend: (visitor: AuthorizedVehicle) => void;
-  onConvertToPermanent: (visitor: AuthorizedVehicle) => void;
+  onToggleActive: (visitor: AuthorizedVehicle) => void;
   onRevoke: (visitor: AuthorizedVehicle) => void;
 }
 
@@ -15,7 +15,7 @@ export default function VisitorTable({
   visitors,
   onEdit,
   onExtend,
-  onConvertToPermanent,
+  onToggleActive,
   onRevoke,
 }: VisitorTableProps) {
   return (
@@ -95,11 +95,13 @@ export default function VisitorTable({
                     </button>
                     <button
                       type="button"
-                      onClick={() => onConvertToPermanent(v)}
-                      className="rounded-md p-1.5 text-blue-600 hover:bg-slate-100 hover:text-blue-700"
-                      title="Convert to permanent whitelist"
+                      onClick={() => onToggleActive(v)}
+                      className={`rounded-md p-1.5 hover:bg-slate-100 ${
+                        v.is_active ? 'text-amber-600 hover:text-amber-700' : 'text-emerald-600 hover:text-emerald-700'
+                      }`}
+                      title={v.is_active ? 'Revoke' : 'Approve'}
                     >
-                      <UserCheck className="h-4 w-4" />
+                      <Power className="h-4 w-4" />
                     </button>
                     <button
                       type="button"
