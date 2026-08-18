@@ -16,7 +16,7 @@ import {
   updateRole,
   updateRolePermissions,
 } from '../services/rolesService';
-import { useAuth } from '../context/AuthContext';
+import { usePermissions } from '../context/PermissionsContext';
 import type { Role, RolePermissionEntry } from '../types/roles';
 
 const RESOURCE_LABELS: Record<string, string> = {
@@ -37,7 +37,7 @@ const RESOURCE_LABELS: Record<string, string> = {
 };
 
 export default function RoleMasterPage() {
-  const { user: currentUser } = useAuth();
+  const { role: currentUserRole, refresh: refreshPermissions } = usePermissions();
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -76,11 +76,16 @@ export default function RoleMasterPage() {
     await updateRole(editingRole.id, { name });
     setEditingRole(null);
     await refresh();
+    // Renaming a role changes what "my own role" even resolves to, if it's
+    // the one you're logged in as — refetch rather than let this session's
+    // view of its own role go stale until the next login.
+    await refreshPermissions();
   };
 
   const handleToggleEnabled = async (role: Role) => {
     await updateRole(role.id, { enabled: !role.enabled });
     await refresh();
+    await refreshPermissions();
   };
 
   const handleDelete = async () => {
@@ -125,8 +130,8 @@ export default function RoleMasterPage() {
               </thead>
               <tbody>
                 {pageItems.map((role) => {
-                  const locked = role.name === 'developer' && currentUser?.role !== 'developer';
-                  const isOwnRole = role.name === currentUser?.role;
+                  const locked = role.name === 'developer' && currentUserRole !== 'developer';
+                  const isOwnRole = role.name === currentUserRole;
                   return (
                   <tr key={role.id} className="border-t border-slate-200">
                     <td className="py-2.5 font-medium capitalize text-slate-900">
@@ -302,8 +307,8 @@ function RoleFormModal({ title, submitLabel, initialName, onClose, onSubmit }: R
 }
 
 function PermissionsMatrixModal({ role, onClose }: { role: Role; onClose: () => void }) {
-  const { user: currentUser } = useAuth();
-  const isOwnRole = role.name === currentUser?.role;
+  const { role: currentUserRole } = usePermissions();
+  const isOwnRole = role.name === currentUserRole;
   const [grid, setGrid] = useState<RolePermissionEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

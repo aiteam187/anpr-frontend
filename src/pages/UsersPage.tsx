@@ -13,11 +13,13 @@ import UserFormModal, { EditUserModal } from '../features/users/UserFormModal';
 import { createUser, getUsers, updateUser } from '../services/authService';
 import { getRoles } from '../services/rolesService';
 import { useAuth } from '../context/AuthContext';
+import { usePermissions } from '../context/PermissionsContext';
 import type { UserAccount, UserCreatePayload, UserUpdatePayload } from '../types/auth';
 import type { Role } from '../types/roles';
 
 export default function UsersPage() {
   const { token, user: currentUser, updateUser: updateAuthUser } = useAuth();
+  const { role: currentUserRole } = usePermissions();
   const [users, setUsers] = useState<UserAccount[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
@@ -159,7 +161,7 @@ export default function UsersPage() {
             <UsersTable
               users={pageItems}
               currentUserId={currentUser?.id}
-              currentUserRole={currentUser?.role}
+              currentUserRole={currentUserRole ?? undefined}
               onEdit={setEditingUser}
             />
             <Pagination

@@ -4,7 +4,7 @@ import FormField, { inputClass } from '../../components/ui/FormField';
 import Select from '../../components/ui/Select';
 import { validatePassword, validatePhone, validateRequired, validateUsername } from '../../utils/validation';
 import { getRoles } from '../../services/rolesService';
-import { useAuth } from '../../context/AuthContext';
+import { usePermissions } from '../../context/PermissionsContext';
 import type { Role } from '../../types/roles';
 import type { UserAccount, UserCreatePayload, UserUpdatePayload } from '../../types/auth';
 
@@ -13,16 +13,18 @@ import type { UserAccount, UserCreatePayload, UserUpdatePayload } from '../../ty
  * "developer" is excluded unless the caller is already a developer — the
  * backend rejects assigning it otherwise (see _guard_developer_role), this
  * just keeps it out of the dropdown so that 403 is never hit in the first
- * place. */
+ * place. Uses PermissionsContext's role (always live from the backend) —
+ * not AuthContext.user.role, which is only set at login and goes stale the
+ * moment your role gets renamed/reassigned mid-session. */
 function useAssignableRoles(): Role[] {
-  const { user: currentUser } = useAuth();
+  const { role: currentUserRole } = usePermissions();
   const [roles, setRoles] = useState<Role[]>([]);
   useEffect(() => {
     getRoles()
       .then((res) => setRoles(res.filter((r) => r.enabled)))
       .catch(() => setRoles([]));
   }, []);
-  if (currentUser?.role === 'developer') return roles;
+  if (currentUserRole === 'developer') return roles;
   return roles.filter((r) => r.name !== 'developer');
 }
 
