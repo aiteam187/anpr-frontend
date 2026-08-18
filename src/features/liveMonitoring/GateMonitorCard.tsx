@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Eye, Scan } from 'lucide-react';
 import Modal from '../../components/ui/Modal';
 import LiveCameraView from '../../components/ui/LiveCameraView';
@@ -28,12 +28,17 @@ import type { SystemHealth } from '../../types/health';
 
 const RECENT_COUNT = 2;
 
-// How long the latest event stays announced on the card before it fades
-// back to just the plain "today" count — keeps the banner meaningful
-// ("just happened") instead of showing a stale event forever.
-const NOTICE_WINDOW_MS = 2 * 60 * 1000;
+// How long a popup stays on screen before it auto-dismisses.
+const POPUP_DURATION_MS = 5000;
 
-function noticeForRecord(r: ActivityRecord): { message: string; style: string } {
+interface Popup {
+  key: string;
+  plateNumber: string;
+  message: string;
+  style: string;
+}
+
+function popupForRecord(r: ActivityRecord): Pick<Popup, 'message' | 'style'> {
   if (r.eventType === 'entry') {
     return { message: 'Vehicle Entered', style: 'border-emerald-200 bg-emerald-50 text-emerald-700' };
   }
@@ -67,6 +72,8 @@ export default function GateMonitorCard({
   const [editingZone, setEditingZone] = useState(false);
   const [zoneVersion, setZoneVersion] = useState(0);
   const [editorContentRect, setEditorContentRect] = useState<ContentRect>(FULL_CONTENT_RECT);
+  const [popup, setPopup] = useState<Popup | null>(null);
+  const lastPopupKeyRef = useRef<string | null>(null);
 
   const camHealth = health?.camera.cameras[gate.camera_id];
   const online = gate.enabled && camHealth?.status === 'ok';
@@ -92,12 +99,28 @@ export default function GateMonitorCard({
 
   const overstayedVehicle = activeVehicles.find((v) => v.cam_id === gate.camera_id && v.is_overstayed);
   const latest = records[0];
-  const isLatestRecent = latest && Date.now() - new Date(latest.time).getTime() < NOTICE_WINDOW_MS;
-  const notice = overstayedVehicle
-    ? { message: `${overstayedVehicle.plate_number} — Vehicle Overstayed`, style: 'border-amber-200 bg-amber-50 text-amber-700' }
-    : isLatestRecent
-      ? { message: `${latest.plateNumber} — ${noticeForRecord(latest).message}`, style: noticeForRecord(latest).style }
-      : null;
+
+  // Pop up once per new event/overstay — not on every poll refresh, which
+  // would otherwise re-show the same notice repeatedly since `latest` and
+  // `overstayedVehicle` stay truthy across many re-renders.
+  useEffect(() => {
+    const next: Popup | null = overstayedVehicle
+      ? {
+          key: `overstay-${overstayedVehicle.plate_number}`,
+          plateNumber: overstayedVehicle.plate_number,
+          message: 'Vehicle Overstayed',
+          style: 'border-amber-200 bg-amber-50 text-amber-700',
+        }
+      : latest
+        ? { key: latest.key, plateNumber: latest.plateNumber, ...popupForRecord(latest) }
+        : null;
+
+    if (!next || next.key === lastPopupKeyRef.current) return;
+    lastPopupKeyRef.current = next.key;
+    setPopup(next);
+    const timer = setTimeout(() => setPopup(null), POPUP_DURATION_MS);
+    return () => clearTimeout(timer);
+  }, [overstayedVehicle?.plate_number, latest?.key]);
 
   const renderActivityRow = (r: ActivityRecord, highlight: boolean) => {
     const vehicle = vehicleByPlate.get(r.plateNumber) ?? null;
@@ -179,13 +202,6 @@ export default function GateMonitorCard({
           <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
             {todayCount} today
           </span>
-          {notice && (
-            <span
-              className={`animate-pulse rounded-full border px-2 py-0.5 text-[11px] font-semibold ${notice.style}`}
-            >
-              {notice.message}
-            </span>
-          )}
         </div>
         <div className="flex items-center gap-3">
           {gate.camera_ip && (
@@ -208,7 +224,7 @@ export default function GateMonitorCard({
         </div>
       </div>
 
-      <div className="p-3">
+      <div className="relative p-3">
         <LiveCameraView
           streamPath={gate.stream_path || getStreamPathForCamera(gate.camera_id)}
           className="aspect-video w-full"
@@ -218,6 +234,16 @@ export default function GateMonitorCard({
             ) : undefined
           }
         />
+        {popup && (
+          <div
+            key={popup.key}
+            className={`pointer-events-none absolute inset-x-3 top-3 flex items-center justify-center rounded-lg border px-3 py-2 text-sm font-semibold shadow-sm ${popup.style}`}
+          >
+            <span className="font-mono">{popup.plateNumber}</span>
+            <span className="mx-1.5 opacity-50">—</span>
+            <span>{popup.message}</span>
+          </div>
+        )}
       </div>
 
       <div className="border-t border-slate-100 px-3 pb-3">
