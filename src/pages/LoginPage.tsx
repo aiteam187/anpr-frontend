@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import FormField, { inputClass } from '../components/ui/FormField';
 import { useAuth } from '../context/AuthContext';
-import anprLogo from '../assets/anpr-logo.png';
+import anprLogo from '../assets/gate-vision-logo.png';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -37,7 +37,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex justify-center">
-          <img src={anprLogo} alt="ANPR" className="h-16 w-auto" />
+          <img src={anprLogo} alt="Gate Vision" className="h-16 w-auto" />
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">

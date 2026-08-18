@@ -10,7 +10,7 @@ import { getAnalyticsSummary } from '../../services/analyticsService';
 import { getGates } from '../../services/gatesService';
 import type { AnalyticsTotals } from '../../types/analytics';
 import type { GateConfig } from '../../types/gate';
-import anprLogo from '../../assets/anpr-logo.png';
+import anprLogo from '../../assets/gate-vision-logo.png';
 
 const SUMMARY_POLL_MS = 20000;
 
@@ -137,7 +137,7 @@ export default function Sidebar({
             className="flex flex-1 items-center justify-center gap-3 overflow-hidden rounded-md py-2 hover:bg-slate-100"
           >
             {(!collapsed || mobileOpen) ? (
-              <img src={anprLogo} alt="ANPR" className="h-14 w-auto shrink-0 object-contain" />
+              <img src={anprLogo} alt="Gate Vision" className="h-14 w-auto shrink-0 object-contain" />
             ) : (
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-600">
                 <Car className="h-5 w-5 text-white" />
