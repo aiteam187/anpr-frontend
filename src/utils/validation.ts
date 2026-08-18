@@ -74,9 +74,9 @@ export function validateNotPastDate(value: string, label: string): string | null
   return null;
 }
 
-/** Required + must not already be expired — used for document validity dates (license, insurance, PUC). */
+/** Optional, but if provided it must not already be expired — used for document validity dates (license, insurance, PUC). */
 export function validateValidityDate(value: string, label: string): string | null {
-  if (!value) return `${label} is required`;
+  if (!value) return null;
   if (isPastDate(value)) return `${label} has expired — renew before adding this vehicle`;
   return null;
 }

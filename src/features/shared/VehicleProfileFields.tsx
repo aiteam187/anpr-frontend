@@ -47,11 +47,13 @@ export function emptyVehicleProfileForm(): VehicleProfileForm {
   };
 }
 
-/** Validates the shared vehicle profile fields — vehicle type/company/model and
- * License/Insurance/PUC are always compulsory ("vehicle docs"); owner name +
- * phone are only required when the owner section is actually shown and
- * hand-typed (visitor flows) — whitelist vehicles get owner data from the
- * Employee Master link instead, so they're skipped there. */
+/** Validates the shared vehicle profile fields — vehicle type/company/model
+ * are compulsory; License Number and the License/Insurance/PUC validity
+ * dates are all optional for every vehicle (visitor or employee-linked),
+ * but a validity date that IS filled in still can't already be expired.
+ * Owner name + phone are only required when the owner section is actually
+ * shown and hand-typed (visitor flows) — whitelist vehicles get owner data
+ * from the Employee Master link instead, so they're skipped there. */
 export function validateVehicleProfile(
   form: VehicleProfileForm,
   opts: { requireOwner?: boolean } = {},
@@ -71,7 +73,6 @@ export function validateVehicleProfile(
   set('vehicle_type', validateRequired(form.vehicle_type, 'Vehicle Type'));
   set('vehicle_company', validateRequired(form.vehicle_company, 'Company / Make'));
   set('vehicle_model', validateRequired(form.vehicle_model, 'Model'));
-  set('license_number', validateRequired(form.license_number, 'License Number'));
   set('license_validity', validateValidityDate(form.license_validity, 'License Validity'));
   set('insurance_validity', validateValidityDate(form.insurance_validity, 'Insurance Validity'));
   set('puc_validity', validateValidityDate(form.puc_validity, 'PUC Validity'));
@@ -227,7 +228,7 @@ export default function VehicleProfileFields({
           Compliance
         </p>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
-          <FormField label="License Number" required>
+          <FormField label="License Number">
             <input
               className={inputClass}
               value={form.license_number}
@@ -235,7 +236,7 @@ export default function VehicleProfileFields({
             />
             {errors.license_number && <p className="mt-1 text-xs text-red-600">{errors.license_number}</p>}
           </FormField>
-          <FormField label="License Validity" required>
+          <FormField label="License Validity">
             <input
               type="date"
               className={inputClass}
@@ -246,7 +247,7 @@ export default function VehicleProfileFields({
               <p className="mt-1 text-xs text-red-600">{errors.license_validity}</p>
             )}
           </FormField>
-          <FormField label="Insurance Valid Until" required>
+          <FormField label="Insurance Valid Until">
             <input
               type="date"
               className={inputClass}
@@ -257,7 +258,7 @@ export default function VehicleProfileFields({
               <p className="mt-1 text-xs text-red-600">{errors.insurance_validity}</p>
             )}
           </FormField>
-          <FormField label="PUC Valid Until" required>
+          <FormField label="PUC Valid Until">
             <input
               type="date"
               className={inputClass}
