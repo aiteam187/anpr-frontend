@@ -130,16 +130,24 @@ export default function RoleMasterPage() {
               </thead>
               <tbody>
                 {pageItems.map((role) => {
-                  const locked = role.name === 'developer' && currentUserRole !== 'developer';
+                  // Admin and Developer are system roles — no client-facing
+                  // action ever applies to them (they can't be renamed,
+                  // disabled, deleted, or have their permissions edited
+                  // through the UI regardless of who's looking), so the
+                  // whole Actions column is hidden for them rather than
+                  // showing a row of grayed-out buttons with tooltips that
+                  // would just confuse a non-technical admin user. Custom
+                  // roles (e.g. "Security") keep full actions, still subject
+                  // to the per-button "can't touch your own role" locks below.
+                  const isSystemRole = ['developer', 'administrator', 'admin'].includes(
+                    role.name.toLowerCase(),
+                  );
                   const isOwnRole = role.name === currentUserRole;
                   return (
                   <tr key={role.id} className="border-t border-slate-200">
                     <td className="py-2.5 font-medium capitalize text-slate-900">
                       {role.name}
-                      {locked && (
-                        <span className="ml-2 text-xs font-normal text-slate-400">(developer-managed only)</span>
-                      )}
-                      {isOwnRole && !locked && (
+                      {isOwnRole && (
                         <span className="ml-2 text-xs font-normal text-slate-400">(your role)</span>
                       )}
                     </td>
@@ -155,45 +163,48 @@ export default function RoleMasterPage() {
                       )}
                     </td>
                     <td className="py-2.5">
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setPermissionsFor(role)}
-                          disabled={locked || isOwnRole}
-                          className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50 disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-transparent"
-                          title={isOwnRole ? "Can't edit your own role's permissions — use a different account" : 'Edit permissions'}
-                        >
-                          <KeyRound className="h-3.5 w-3.5" />
-                          Permissions
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setEditingRole(role)}
-                          disabled={locked}
-                          className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-transparent"
-                          title="Rename"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleToggleEnabled(role)}
-                          disabled={locked || (isOwnRole && role.enabled)}
-                          title={isOwnRole && role.enabled ? "Can't disable your own role" : undefined}
-                          className="rounded-md px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-transparent"
-                        >
-                          {role.enabled ? 'Disable' : 'Enable'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setDeleteTarget(role)}
-                          disabled={locked || isOwnRole}
-                          className="rounded-md p-1.5 text-red-600 hover:bg-slate-100 hover:text-red-700 disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-transparent"
-                          title={isOwnRole ? "Can't delete your own role" : 'Delete permanently'}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
+                      {isSystemRole ? (
+                        <span className="text-xs text-slate-400">—</span>
+                      ) : (
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setPermissionsFor(role)}
+                            disabled={isOwnRole}
+                            className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50 disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-transparent"
+                            title={isOwnRole ? "Can't edit your own role's permissions — use a different account" : 'Edit permissions'}
+                          >
+                            <KeyRound className="h-3.5 w-3.5" />
+                            Permissions
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingRole(role)}
+                            className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                            title="Rename"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleEnabled(role)}
+                            disabled={isOwnRole && role.enabled}
+                            title={isOwnRole && role.enabled ? "Can't disable your own role" : undefined}
+                            className="rounded-md px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-transparent"
+                          >
+                            {role.enabled ? 'Disable' : 'Enable'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeleteTarget(role)}
+                            disabled={isOwnRole}
+                            className="rounded-md p-1.5 text-red-600 hover:bg-slate-100 hover:text-red-700 disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-transparent"
+                            title={isOwnRole ? "Can't delete your own role" : 'Delete permanently'}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                   );
