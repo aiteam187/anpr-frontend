@@ -23,9 +23,13 @@ const getWhitelistVehicles = () =>
 const getVisitorVehicles = () =>
   getAuthorizedVehicles().then((list) => list.filter((v) => v.list_type === 'visitor'));
 
-function buildActiveVehiclesColumns(gateNameByCamId: Map<string, string>): ReportColumn<ActiveVehicle>[] {
+function buildActiveVehiclesColumns(
+  gateNameByCamId: Map<string, string>,
+  employeeNameByPlate: Map<string, string>,
+): ReportColumn<ActiveVehicle>[] {
   return [
     { header: 'Number Plate', render: (v) => <span className="font-mono font-semibold text-slate-900">{v.plate_number}</span> },
+    { header: 'Employee Name', render: (v) => employeeNameByPlate.get(v.plate_number) ?? '—' },
     { header: 'Entry Time', render: (v) => formatDateTime(v.entry_time) },
     { header: 'Elapsed', render: (v) => formatElapsed(v.elapsed_seconds) },
     {
@@ -41,15 +45,18 @@ function buildActiveVehiclesColumns(gateNameByCamId: Map<string, string>): Repor
   ];
 }
 
-const HISTORY_COLUMNS: ReportColumn<HistoryRecord>[] = [
-  { header: 'Number Plate', render: (v) => <span className="font-mono font-semibold text-slate-900">{v.plate_number}</span> },
-  { header: 'Entry Time', render: (v) => formatDateTime(v.entry_time) },
-  { header: 'Exit Time', render: (v) => formatDateTime(v.exit_time) },
-  { header: 'Dwell Time', render: (v) => v.dwell_time },
-  { header: 'Status', render: (v) => <span className="capitalize">{v.status}</span> },
-  { header: 'Entry Gate', render: (v) => v.entry_gate_name ?? v.entry_cam_id },
-  { header: 'Exit Gate', render: (v) => v.exit_gate_name ?? v.exit_cam_id },
-];
+function buildHistoryColumns(employeeNameByPlate: Map<string, string>): ReportColumn<HistoryRecord>[] {
+  return [
+    { header: 'Number Plate', render: (v) => <span className="font-mono font-semibold text-slate-900">{v.plate_number}</span> },
+    { header: 'Employee Name', render: (v) => employeeNameByPlate.get(v.plate_number) ?? '—' },
+    { header: 'Entry Time', render: (v) => formatDateTime(v.entry_time) },
+    { header: 'Exit Time', render: (v) => formatDateTime(v.exit_time) },
+    { header: 'Dwell Time', render: (v) => v.dwell_time },
+    { header: 'Status', render: (v) => <span className="capitalize">{v.status}</span> },
+    { header: 'Entry Gate', render: (v) => v.entry_gate_name ?? v.entry_cam_id },
+    { header: 'Exit Gate', render: (v) => v.exit_gate_name ?? v.exit_cam_id },
+  ];
+}
 
 const AUTHORIZED_VEHICLES_COLUMNS: ReportColumn<AuthorizedVehicle>[] = [
   { header: 'Number Plate', render: (v) => <span className="font-mono font-semibold text-slate-900">{v.plate_number}</span> },
@@ -106,6 +113,7 @@ export default function ReportsPage() {
   const [error, setError] = useState<string | null>(null);
   const [format, setFormat] = useState<ExportFormat>('xlsx');
   const [gates, setGates] = useState<GateConfig[]>([]);
+  const [authorizedVehicles, setAuthorizedVehicles] = useState<AuthorizedVehicle[]>([]);
   const [gateFilter, setGateFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<'' | 'active' | 'inactive'>('');
   const [rangePreset, setRangePreset] = useState<RangeSelection>('all');
@@ -115,6 +123,9 @@ export default function ReportsPage() {
   useEffect(() => {
     getGates()
       .then(setGates)
+      .catch(() => {});
+    getAuthorizedVehicles()
+      .then(setAuthorizedVehicles)
       .catch(() => {});
   }, []);
 
@@ -131,9 +142,22 @@ export default function ReportsPage() {
     () => new Map(gates.map((g) => [g.camera_id, g.gate_name])),
     [gates],
   );
+  const employeeNameByPlate = useMemo(
+    () =>
+      new Map(
+        authorizedVehicles
+          .filter((v) => v.owner_name)
+          .map((v) => [v.plate_number, v.owner_name as string]),
+      ),
+    [authorizedVehicles],
+  );
   const activeVehiclesColumns = useMemo(
-    () => buildActiveVehiclesColumns(gateNameByCamId),
-    [gateNameByCamId],
+    () => buildActiveVehiclesColumns(gateNameByCamId, employeeNameByPlate),
+    [gateNameByCamId, employeeNameByPlate],
+  );
+  const historyColumns = useMemo(
+    () => buildHistoryColumns(employeeNameByPlate),
+    [employeeNameByPlate],
   );
 
   const dateRangeMs = useMemo(
@@ -327,7 +351,7 @@ export default function ReportsPage() {
         {tab === 'history' && (
           <ReportTable
             fetcher={getHistory}
-            columns={HISTORY_COLUMNS}
+            columns={historyColumns}
             rowKey={(v) => `${v.plate_number}-${v.entry_time}`}
             emptyMessage="No history records yet"
             getSearchText={(v) => `${v.plate_number} ${v.entry_gate_name ?? ''} ${v.exit_gate_name ?? ''}`}

@@ -241,6 +241,9 @@ export default function MonitoringTrackingPage() {
                     Number Plate
                   </th>
                   <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Employee Name
+                  </th>
+                  <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Event
                   </th>
                   <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -261,7 +264,7 @@ export default function MonitoringTrackingPage() {
               <tbody className="divide-y divide-slate-100">
                 {pageRecords.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="py-10 text-center text-slate-400">
+                    <td colSpan={9} className="py-10 text-center text-slate-400">
                       No matching activity
                     </td>
                   </tr>
@@ -286,6 +289,9 @@ export default function MonitoringTrackingPage() {
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 font-mono font-semibold text-slate-900">
                         {r.plateNumber}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-slate-600">
+                        {vehicle?.owner_name || '—'}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3">
                         <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${EVENT_STYLES[r.eventType]}`}>
