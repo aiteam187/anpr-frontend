@@ -13,6 +13,7 @@ import type { Employee } from '../../types/masters';
 interface AddVehicleModalProps {
   employees: Employee[];
   vehicleTypes: string[];
+  fuelTypes: string[];
   onClose: () => void;
   onSubmit: (payload: AuthorizedVehicleCreatePayload) => Promise<void>;
 }
@@ -26,7 +27,13 @@ interface AddVehicleModalProps {
  * those fields across (see _apply_employee_link). Blacklist/visitor
  * entries are created from their own dedicated flows (blacklisting an
  * existing whitelist vehicle, and the Visitors page), not here. */
-export default function AddVehicleModal({ employees, vehicleTypes, onClose, onSubmit }: AddVehicleModalProps) {
+export default function AddVehicleModal({
+  employees,
+  vehicleTypes,
+  fuelTypes,
+  onClose,
+  onSubmit,
+}: AddVehicleModalProps) {
   const [plateNumber, setPlateNumber] = useState('');
   const [notes, setNotes] = useState('');
   const [form, setForm] = useState(emptyVehicleProfileForm());
@@ -104,6 +111,7 @@ export default function AddVehicleModal({ employees, vehicleTypes, onClose, onSu
           errors={errors}
           hideOwnerSection
           vehicleTypeOptions={vehicleTypes}
+          fuelTypeOptions={fuelTypes}
         />
 
         <FormField label="Notes (optional)">

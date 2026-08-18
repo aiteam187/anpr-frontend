@@ -29,11 +29,11 @@ import {
   switchListType,
   updateVehicleDetails,
 } from '../services/authorizedVehiclesService';
-import { getEmployees, vehicleTypesApi } from '../services/mastersService';
+import { fuelTypesApi, getEmployees, vehicleTypesApi } from '../services/mastersService';
 import type { AuthorizedVehicle, ListType } from '../types/authorizedVehicle';
 import type { Employee } from '../types/masters';
 
-type Tab = 'vehicles' | 'allowlist' | 'blacklist' | 'visitors' | 'vehicle-types';
+type Tab = 'vehicles' | 'allowlist' | 'blacklist' | 'visitors' | 'vehicle-types' | 'fuel-types';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'vehicles', label: 'Vehicles' },
@@ -41,12 +41,14 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'blacklist', label: 'Blacklist' },
   { key: 'visitors', label: 'Visitors' },
   { key: 'vehicle-types', label: 'Vehicle Types' },
+  { key: 'fuel-types', label: 'Fuel Types' },
 ];
 
 export default function VehicleMasterPage() {
   const [tab, setTab] = useState<Tab>('vehicles');
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [vehicleTypes, setVehicleTypes] = useState<string[]>([]);
+  const [fuelTypes, setFuelTypes] = useState<string[]>([]);
 
   const loadEmployees = useCallback(async () => {
     try {
@@ -66,16 +68,26 @@ export default function VehicleMasterPage() {
     }
   }, []);
 
+  const loadFuelTypes = useCallback(async () => {
+    try {
+      const res = await fuelTypesApi.list();
+      setFuelTypes(res.filter((t) => t.enabled).map((t) => t.name));
+    } catch {
+      // Fuel Type Master lookup is a convenience feature for the dropdown — silently skip if it fails to load.
+    }
+  }, []);
+
   useEffect(() => {
     loadEmployees();
     loadVehicleTypes();
-  }, [loadEmployees, loadVehicleTypes]);
+    loadFuelTypes();
+  }, [loadEmployees, loadVehicleTypes, loadFuelTypes]);
 
   return (
     <div className="space-y-4">
       <PageHeader
         title="Vehicle Master"
-        description="Allowlist, blacklist, visitors, and vehicle types — all in one place"
+        description="Allowlist, blacklist, visitors, vehicle types, and fuel types — all in one place"
       />
 
       <div className="flex gap-1 border-b border-slate-200">
@@ -95,16 +107,30 @@ export default function VehicleMasterPage() {
         ))}
       </div>
 
-      {tab === 'vehicles' && <VehiclesTab employees={employees} vehicleTypes={vehicleTypes} />}
-      {tab === 'allowlist' && <AllowlistTab employees={employees} vehicleTypes={vehicleTypes} />}
-      {tab === 'blacklist' && <BlacklistTab employees={employees} vehicleTypes={vehicleTypes} />}
-      {tab === 'visitors' && <VisitorsTab />}
+      {tab === 'vehicles' && (
+        <VehiclesTab employees={employees} vehicleTypes={vehicleTypes} fuelTypes={fuelTypes} />
+      )}
+      {tab === 'allowlist' && (
+        <AllowlistTab employees={employees} vehicleTypes={vehicleTypes} fuelTypes={fuelTypes} />
+      )}
+      {tab === 'blacklist' && (
+        <BlacklistTab employees={employees} vehicleTypes={vehicleTypes} fuelTypes={fuelTypes} />
+      )}
+      {tab === 'visitors' && <VisitorsTab vehicleTypes={vehicleTypes} fuelTypes={fuelTypes} />}
       {tab === 'vehicle-types' && (
         <SimpleMasterPage
           title="Vehicle Types"
           description="Options available in every vehicle form's Vehicle Type dropdown"
           itemLabel="Vehicle Type"
           api={vehicleTypesApi}
+        />
+      )}
+      {tab === 'fuel-types' && (
+        <SimpleMasterPage
+          title="Fuel Types"
+          description="Options available in every vehicle form's Fuel Type dropdown"
+          itemLabel="Fuel Type"
+          api={fuelTypesApi}
         />
       )}
     </div>
@@ -114,6 +140,7 @@ export default function VehicleMasterPage() {
 interface TabProps {
   employees: Employee[];
   vehicleTypes: string[];
+  fuelTypes: string[];
 }
 
 const LIST_TYPE_FILTERS: { value: ListType | ''; label: string }[] = [
@@ -144,7 +171,7 @@ function ComplianceCell({ vehicle: v }: { vehicle: AuthorizedVehicle }) {
 }
 
 /** Default overview tab — every non-visitor vehicle (whitelist + blacklist), in one table with a list-type filter. The dedicated Allowlist/Blacklist tabs exist alongside this for one-click access to just those lists. Visitors get their own separate tab (VisitorsTab) instead of being mixed in here — they're time-bound guest access, not permanent fleet records. */
-function VehiclesTab({ employees, vehicleTypes }: TabProps) {
+function VehiclesTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
   const [vehicles, setVehicles] = useState<AuthorizedVehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -414,6 +441,7 @@ function VehiclesTab({ employees, vehicleTypes }: TabProps) {
         <AddVehicleModal
           employees={employees}
           vehicleTypes={vehicleTypes}
+          fuelTypes={fuelTypes}
           onClose={() => setShowAddModal(false)}
           onSubmit={handleAddVehicle}
         />
@@ -434,6 +462,7 @@ function VehiclesTab({ employees, vehicleTypes }: TabProps) {
         <VehicleDetailsModal
           vehicle={editingVehicle}
           vehicleTypes={vehicleTypes}
+          fuelTypes={fuelTypes}
           employees={employees}
           onClose={() => setEditingVehicle(null)}
           onSubmit={handleSaveDetails}
@@ -473,7 +502,7 @@ function VehiclesTab({ employees, vehicleTypes }: TabProps) {
   );
 }
 
-function AllowlistTab({ employees, vehicleTypes }: TabProps) {
+function AllowlistTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
   const [vehicles, setVehicles] = useState<AuthorizedVehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -698,6 +727,7 @@ function AllowlistTab({ employees, vehicleTypes }: TabProps) {
         <AddVehicleModal
           employees={employees}
           vehicleTypes={vehicleTypes}
+          fuelTypes={fuelTypes}
           onClose={() => setShowAddModal(false)}
           onSubmit={handleAddVehicle}
         />
@@ -718,6 +748,7 @@ function AllowlistTab({ employees, vehicleTypes }: TabProps) {
         <VehicleDetailsModal
           vehicle={editingVehicle}
           vehicleTypes={vehicleTypes}
+          fuelTypes={fuelTypes}
           employees={employees}
           onClose={() => setEditingVehicle(null)}
           onSubmit={handleSaveDetails}
@@ -748,7 +779,7 @@ function AllowlistTab({ employees, vehicleTypes }: TabProps) {
   );
 }
 
-function BlacklistTab({ employees, vehicleTypes }: TabProps) {
+function BlacklistTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
   const [vehicles, setVehicles] = useState<AuthorizedVehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -898,6 +929,7 @@ function BlacklistTab({ employees, vehicleTypes }: TabProps) {
         <VehicleDetailsModal
           vehicle={editingVehicle}
           vehicleTypes={vehicleTypes}
+          fuelTypes={fuelTypes}
           employees={employees}
           onClose={() => setEditingVehicle(null)}
           onSubmit={handleSaveDetails}
@@ -917,7 +949,7 @@ function BlacklistTab({ employees, vehicleTypes }: TabProps) {
 }
 
 /** Time-bound guest vehicle access — kept on its own tab instead of mixed into the Vehicles/Allowlist/Blacklist lists, since visitors have a different lifecycle (visit purpose, valid window, convert-to-permanent/revoke) than permanent fleet records. */
-function VisitorsTab() {
+function VisitorsTab({ vehicleTypes, fuelTypes }: { vehicleTypes: string[]; fuelTypes: string[] }) {
   const [visitors, setVisitors] = useState<AuthorizedVehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -1058,10 +1090,19 @@ function VisitorsTab() {
         )}
       </Panel>
 
-      {showAddModal && <AddVisitorModal onClose={() => setShowAddModal(false)} onSubmit={handleAdd} />}
+      {showAddModal && (
+        <AddVisitorModal
+          vehicleTypes={vehicleTypes}
+          fuelTypes={fuelTypes}
+          onClose={() => setShowAddModal(false)}
+          onSubmit={handleAdd}
+        />
+      )}
       {editingVisitor && (
         <EditVisitorModal
           visitor={editingVisitor}
+          vehicleTypes={vehicleTypes}
+          fuelTypes={fuelTypes}
           onClose={() => setEditingVisitor(null)}
           onSubmit={handleEdit}
         />

@@ -12,6 +12,7 @@ import type { Employee } from '../../types/masters';
 interface VehicleDetailsModalProps {
   vehicle: AuthorizedVehicle;
   vehicleTypes: string[];
+  fuelTypes: string[];
   employees: Employee[];
   onClose: () => void;
   onSubmit: (payload: AuthorizedVehicleDetailsPayload) => Promise<void>;
@@ -30,6 +31,7 @@ function toDateInputValue(value: string | null): string {
 export default function VehicleDetailsModal({
   vehicle,
   vehicleTypes,
+  fuelTypes,
   employees,
   onClose,
   onSubmit,
@@ -103,6 +105,7 @@ export default function VehicleDetailsModal({
           errors={errors}
           hideOwnerSection
           vehicleTypeOptions={vehicleTypes}
+          fuelTypeOptions={fuelTypes}
         />
 
         <FormField label="Notes">

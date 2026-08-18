@@ -17,10 +17,13 @@ import {
   switchListType,
   updateVehicleDetails,
 } from '../services/authorizedVehiclesService';
+import { fuelTypesApi, vehicleTypesApi } from '../services/mastersService';
 import type { AuthorizedVehicle } from '../types/authorizedVehicle';
 
 export default function VisitorsPage() {
   const [visitors, setVisitors] = useState<AuthorizedVehicle[]>([]);
+  const [vehicleTypes, setVehicleTypes] = useState<string[]>([]);
+  const [fuelTypes, setFuelTypes] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -44,6 +47,18 @@ export default function VisitorsPage() {
 
   useEffect(() => {
     refresh();
+    vehicleTypesApi
+      .list()
+      .then((res) => setVehicleTypes(res.filter((t) => t.enabled).map((t) => t.name)))
+      .catch(() => {
+        // Vehicle Type Master lookup is a convenience feature for the dropdown — silently skip if it fails to load.
+      });
+    fuelTypesApi
+      .list()
+      .then((res) => setFuelTypes(res.filter((t) => t.enabled).map((t) => t.name)))
+      .catch(() => {
+        // Fuel Type Master lookup is a convenience feature for the dropdown — silently skip if it fails to load.
+      });
   }, [refresh]);
 
   const handleAdd = async (input: NewVisitorInput) => {
@@ -166,11 +181,18 @@ export default function VisitorsPage() {
       </Panel>
 
       {showAddModal && (
-        <AddVisitorModal onClose={() => setShowAddModal(false)} onSubmit={handleAdd} />
+        <AddVisitorModal
+          vehicleTypes={vehicleTypes}
+          fuelTypes={fuelTypes}
+          onClose={() => setShowAddModal(false)}
+          onSubmit={handleAdd}
+        />
       )}
       {editingVisitor && (
         <EditVisitorModal
           visitor={editingVisitor}
+          vehicleTypes={vehicleTypes}
+          fuelTypes={fuelTypes}
           onClose={() => setEditingVisitor(null)}
           onSubmit={handleEdit}
         />

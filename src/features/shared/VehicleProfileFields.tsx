@@ -8,7 +8,8 @@ import {
 } from '../../utils/validation';
 
 export const VEHICLE_TYPES = ['2 WHEELER', '3 WHEELER', '4 WHEELER', 'OTHER'];
-const FUEL_TYPES = ['petrol', 'diesel', 'cng', 'electric', 'hybrid', 'other'];
+/** Fallback only, for callers that haven't wired up the live Fuel Type Master list (see fuelTypesApi) yet. */
+export const FUEL_TYPES = ['Petrol', 'Diesel', 'CNG', 'Electric', 'Hybrid', 'Other'];
 
 export interface VehicleProfileForm {
   owner_name: string;
@@ -90,6 +91,8 @@ interface VehicleProfileFieldsProps {
   hideOwnerSection?: boolean;
   /** Vehicle Type dropdown options — pass the live Vehicle Type Master list (see vehicleTypesApi) so admin-added types actually show up. Falls back to the fixed VEHICLE_TYPES list for callers that haven't wired that up yet. */
   vehicleTypeOptions?: string[];
+  /** Fuel Type dropdown options — pass the live Fuel Type Master list (see fuelTypesApi) so admin-added fuel types actually show up. Falls back to the fixed FUEL_TYPES list for callers that haven't wired that up yet. */
+  fuelTypeOptions?: string[];
   /** Shows required (*) markers on Name/Phone — set alongside validateVehicleProfile(form, { requireOwner: true }) for flows where owner details are hand-typed (visitors), not linked from Employee Master. */
   requireOwner?: boolean;
 }
@@ -103,6 +106,7 @@ export default function VehicleProfileFields({
   disableOwnerFields = false,
   hideOwnerSection = false,
   vehicleTypeOptions = VEHICLE_TYPES,
+  fuelTypeOptions = FUEL_TYPES,
   requireOwner = false,
 }: VehicleProfileFieldsProps) {
   return (
@@ -190,7 +194,7 @@ export default function VehicleProfileFields({
           <FormField label="Fuel Type">
             <Select value={form.fuel_type} onChange={(e) => onChange('fuel_type', e.target.value)}>
               <option value="">—</option>
-              {FUEL_TYPES.map((t) => (
+              {fuelTypeOptions.map((t) => (
                 <option key={t} value={t}>
                   {t}
                 </option>

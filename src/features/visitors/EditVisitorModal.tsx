@@ -19,6 +19,8 @@ export interface VisitorEditInput {
 
 interface EditVisitorModalProps {
   visitor: AuthorizedVehicle;
+  vehicleTypes: string[];
+  fuelTypes: string[];
   onClose: () => void;
   onSubmit: (input: VisitorEditInput) => Promise<void>;
 }
@@ -56,7 +58,13 @@ function toDetailsPayload(form: VehicleProfileForm, notes: string): AuthorizedVe
   };
 }
 
-export default function EditVisitorModal({ visitor, onClose, onSubmit }: EditVisitorModalProps) {
+export default function EditVisitorModal({
+  visitor,
+  vehicleTypes,
+  fuelTypes,
+  onClose,
+  onSubmit,
+}: EditVisitorModalProps) {
   const [visitPurpose, setVisitPurpose] = useState(visitor.visit_purpose ?? '');
   const [visitingWhom, setVisitingWhom] = useState(visitor.visiting_whom ?? '');
   const [validFrom, setValidFrom] = useState(toLocalInputValue(visitor.valid_from));
@@ -170,6 +178,8 @@ export default function EditVisitorModal({ visitor, onClose, onSubmit }: EditVis
           ownerLabel="Visitor Name"
           ownerSectionLabel="Visitor"
           requireOwner
+          vehicleTypeOptions={vehicleTypes}
+          fuelTypeOptions={fuelTypes}
         />
 
         <FormField label="Notes">

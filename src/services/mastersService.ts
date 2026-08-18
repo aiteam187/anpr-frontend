@@ -19,6 +19,7 @@ function simpleMasterApi(basePath: string) {
 
 export const departmentsApi = simpleMasterApi('/admin/departments');
 export const vehicleTypesApi = simpleMasterApi('/admin/vehicle-types');
+export const fuelTypesApi = simpleMasterApi('/admin/fuel-types');
 export const reportingManagersApi = simpleMasterApi('/admin/reporting-managers');
 
 export function getEmployees() {

@@ -23,6 +23,8 @@ export interface NewVisitorInput {
 }
 
 interface AddVisitorModalProps {
+  vehicleTypes: string[];
+  fuelTypes: string[];
   onClose: () => void;
   onSubmit: (input: NewVisitorInput) => Promise<void>;
 }
@@ -59,7 +61,12 @@ function toDetailsPayload(form: VehicleProfileForm, notes: string): AuthorizedVe
   };
 }
 
-export default function AddVisitorModal({ onClose, onSubmit }: AddVisitorModalProps) {
+export default function AddVisitorModal({
+  vehicleTypes,
+  fuelTypes,
+  onClose,
+  onSubmit,
+}: AddVisitorModalProps) {
   const [plateNumber, setPlateNumber] = useState('');
   const [visitPurpose, setVisitPurpose] = useState('');
   const [visitingWhom, setVisitingWhom] = useState('');
@@ -173,6 +180,8 @@ export default function AddVisitorModal({ onClose, onSubmit }: AddVisitorModalPr
           ownerLabel="Visitor Name"
           ownerSectionLabel="Visitor"
           requireOwner
+          vehicleTypeOptions={vehicleTypes}
+          fuelTypeOptions={fuelTypes}
         />
 
         <FormField label="Notes">
