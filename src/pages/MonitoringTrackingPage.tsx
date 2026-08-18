@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Eye, Search } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Eye, Filter, Search } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import Panel from '../components/ui/Panel';
-import { inputClass } from '../components/ui/FormField';
+import FormField, { inputClass } from '../components/ui/FormField';
 import Select from '../components/ui/Select';
 import ImageLightbox from '../components/ui/ImageLightbox';
 import ExportControls from '../components/ui/ExportControls';
@@ -98,88 +98,118 @@ export default function MonitoringTrackingPage() {
         description="Every entry, exit, and unauthorized attempt in one timeline"
       />
 
+      <Panel title="Filters" badge={<Filter className="h-3.5 w-3.5 text-slate-400" />}>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <FormField label="Search Plate">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                className={`${inputClass} pl-8`}
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  resetPage();
+                }}
+                placeholder="e.g. DL01AB1234"
+              />
+            </div>
+          </FormField>
+          <FormField label="Event">
+            <Select
+              value={eventFilter}
+              onChange={(e) => {
+                setEventFilter(e.target.value as ActivityEventType | '');
+                resetPage();
+              }}
+            >
+              {EVENT_FILTERS.map((f) => (
+                <option key={f.value} value={f.value}>
+                  {f.label}
+                </option>
+              ))}
+            </Select>
+          </FormField>
+          <FormField label="Gate">
+            <Select
+              value={gateFilter}
+              onChange={(e) => {
+                setGateFilter(e.target.value);
+                resetPage();
+              }}
+            >
+              <option value="">All Gates</option>
+              {data.gates
+                .filter((g) => g.enabled)
+                .map((g) => (
+                  <option key={g.camera_id} value={g.camera_id}>
+                    {g.gate_name} ({g.direction})
+                  </option>
+                ))}
+            </Select>
+          </FormField>
+          <FormField label="From">
+            <input
+              type="date"
+              className={inputClass}
+              value={startDate}
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                resetPage();
+              }}
+            />
+          </FormField>
+          <FormField label="To">
+            <input
+              type="date"
+              className={inputClass}
+              value={endDate}
+              onChange={(e) => {
+                setEndDate(e.target.value);
+                resetPage();
+              }}
+            />
+          </FormField>
+          <div className="flex items-end">
+            <button
+              type="button"
+              onClick={() => {
+                setQuery('');
+                setEventFilter('');
+                setGateFilter('');
+                setStartDate('');
+                setEndDate('');
+                resetPage();
+              }}
+              className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
+            >
+              Clear filters
+            </button>
+          </div>
+        </div>
+      </Panel>
+
       {data.loading ? (
         <Panel title="Timeline">
           <SkeletonTable columns={7} rows={8} />
         </Panel>
       ) : (
         <Panel
-          title={`Timeline (${filtered.length})`}
+          title="Timeline"
+          badge={
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-500">
+              {filtered.length}
+            </span>
+          }
           action={
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                <input
-                  className={`${inputClass} w-56 py-1 pl-7 text-xs`}
-                  value={query}
-                  onChange={(e) => {
-                    setQuery(e.target.value);
-                    resetPage();
-                  }}
-                  placeholder="Search plate…"
-                />
-              </div>
-              <Select
-                value={eventFilter}
-                onChange={(e) => {
-                  setEventFilter(e.target.value as ActivityEventType | '');
-                  resetPage();
-                }}
-                fullWidth={false}
-                className="w-32"
-              >
-                {EVENT_FILTERS.map((f) => (
-                  <option key={f.value} value={f.value}>
-                    {f.label}
-                  </option>
-                ))}
-              </Select>
-              <Select
-                value={gateFilter}
-                onChange={(e) => {
-                  setGateFilter(e.target.value);
-                  resetPage();
-                }}
-                fullWidth={false}
-                className="w-36"
-              >
-                <option value="">All Gates</option>
-                {data.gates
-                  .filter((g) => g.enabled)
-                  .map((g) => (
-                    <option key={g.camera_id} value={g.camera_id}>
-                      {g.gate_name} ({g.direction})
-                    </option>
-                  ))}
-              </Select>
-              <input
-                type="date"
-                className={`${inputClass} w-32 py-1 text-xs`}
-                value={startDate}
-                onChange={(e) => {
-                  setStartDate(e.target.value);
-                  resetPage();
-                }}
-              />
-              <input
-                type="date"
-                className={`${inputClass} w-32 py-1 text-xs`}
-                value={endDate}
-                onChange={(e) => {
-                  setEndDate(e.target.value);
-                  resetPage();
-                }}
-              />
-              <ExportControls
-                kind={exportKindForEventFilter(eventFilter)}
-                fallback="vehicle-tracking.csv"
-                params={{
-                  plate: query.trim() || undefined,
-                  start_date: startDate || undefined,
-                  end_date: endDate || undefined,
-                }}
-              />
-            </div>
+            <ExportControls
+              kind={exportKindForEventFilter(eventFilter)}
+              fallback="vehicle-tracking.csv"
+              params={{
+                plate: query.trim() || undefined,
+                start_date: startDate || undefined,
+                end_date: endDate || undefined,
+              }}
+            />
           }
         >
           <div className="max-h-[60vh] overflow-auto rounded-lg border border-slate-100">
