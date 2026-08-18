@@ -47,13 +47,14 @@ export function emptyVehicleProfileForm(): VehicleProfileForm {
   };
 }
 
-/** Validates the shared vehicle profile fields — vehicle type/company/model
- * are compulsory; License Number and the License/Insurance/PUC validity
- * dates are all optional for every vehicle (visitor or employee-linked),
- * but a validity date that IS filled in still can't already be expired.
- * Owner name + phone are only required when the owner section is actually
- * shown and hand-typed (visitor flows) — whitelist vehicles get owner data
- * from the Employee Master link instead, so they're skipped there. */
+/** Validates the shared vehicle profile fields — only Vehicle Type is
+ * compulsory. Company/Make, Model, Fuel Type, License Number, and the
+ * License/Insurance/PUC validity dates are all optional for every vehicle
+ * (visitor or employee-linked), but a validity date that IS filled in
+ * still can't already be expired. Owner name + phone are only required
+ * when the owner section is actually shown and hand-typed (visitor flows)
+ * — whitelist vehicles get owner data from the Employee Master link
+ * instead, so they're skipped there. */
 export function validateVehicleProfile(
   form: VehicleProfileForm,
   opts: { requireOwner?: boolean } = {},
@@ -71,8 +72,6 @@ export function validateVehicleProfile(
   }
   set('owner_employee_id', validateEmployeeId(form.owner_employee_id));
   set('vehicle_type', validateRequired(form.vehicle_type, 'Vehicle Type'));
-  set('vehicle_company', validateRequired(form.vehicle_company, 'Company / Make'));
-  set('vehicle_model', validateRequired(form.vehicle_model, 'Model'));
   set('license_validity', validateValidityDate(form.license_validity, 'License Validity'));
   set('insurance_validity', validateValidityDate(form.insurance_validity, 'Insurance Validity'));
   set('puc_validity', validateValidityDate(form.puc_validity, 'PUC Validity'));
@@ -202,7 +201,7 @@ export default function VehicleProfileFields({
               ))}
             </Select>
           </FormField>
-          <FormField label="Company / Make" required>
+          <FormField label="Company / Make">
             <input
               className={inputClass}
               value={form.vehicle_company}
@@ -211,7 +210,7 @@ export default function VehicleProfileFields({
             />
             {errors.vehicle_company && <p className="mt-1 text-xs text-red-600">{errors.vehicle_company}</p>}
           </FormField>
-          <FormField label="Model" required>
+          <FormField label="Model">
             <input
               className={inputClass}
               value={form.vehicle_model}
