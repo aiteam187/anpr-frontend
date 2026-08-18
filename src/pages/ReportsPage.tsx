@@ -121,6 +121,7 @@ export default function ReportsPage() {
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [menuPreset, setMenuPreset] = useState<RangeSelection>('all');
   const [exportCustomFrom, setExportCustomFrom] = useState('');
   const [exportCustomTo, setExportCustomTo] = useState('');
   const exportMenuRef = useRef<HTMLDivElement>(null);
@@ -152,6 +153,7 @@ export default function ReportsPage() {
     setRangePreset('all');
     setCustomFrom('');
     setCustomTo('');
+    setMenuPreset('all');
     setExportCustomFrom('');
     setExportCustomTo('');
   }, [tab]);
@@ -292,19 +294,35 @@ export default function ReportsPage() {
     </>
   );
 
-  // Clicking Export opens this menu instead of downloading immediately —
-  // picking a timeline both runs the export for exactly that range and
-  // syncs the on-screen DateRangeDropdown/table filter to match, so what
-  // you just downloaded is also what you're now looking at.
-  const runExport = async (preset: RangeSelection, from: string, to: string) => {
+  // Clicking Export opens this menu instead of downloading immediately.
+  // Picking a preset (or typing a custom From/To) only selects it — nothing
+  // downloads until the Export button at the bottom of the menu is pressed,
+  // which then also syncs the on-screen DateRangeDropdown/table filter to
+  // match what was just downloaded.
+  const selectPreset = (preset: RangeSelection) => {
+    setMenuPreset(preset);
+    setExportCustomFrom('');
+    setExportCustomTo('');
+  };
+
+  const handleExportCustomFromChange = (value: string) => {
+    setExportCustomFrom(value);
+    setMenuPreset('range');
+  };
+  const handleExportCustomToChange = (value: string) => {
+    setExportCustomTo(value);
+    setMenuPreset('range');
+  };
+
+  const handleConfirmExport = async () => {
     setShowExportMenu(false);
-    setRangePreset(preset);
-    setCustomFrom(from);
-    setCustomTo(to);
+    setRangePreset(menuPreset);
+    setCustomFrom(exportCustomFrom);
+    setCustomTo(exportCustomTo);
     setDownloading(true);
     setError(null);
     try {
-      const range = computeRangeMs(preset, from, to);
+      const range = computeRangeMs(menuPreset, exportCustomFrom, exportCustomTo);
       const params: Record<string, string | undefined> = {
         start_date: range.start !== null ? new Date(range.start).toISOString() : undefined,
         end_date: range.end !== null ? new Date(range.end).toISOString() : undefined,
@@ -318,12 +336,6 @@ export default function ReportsPage() {
     } finally {
       setDownloading(false);
     }
-  };
-
-  const handleExportForRange = (preset: RangeSelection) => runExport(preset, '', '');
-  const handleExportCustomRange = () => {
-    if (!exportCustomFrom && !exportCustomTo) return;
-    runExport('range', exportCustomFrom, exportCustomTo);
   };
 
   const EXPORT_MENU_OPTIONS: { value: RangeSelection; label: string }[] = [
@@ -385,36 +397,53 @@ export default function ReportsPage() {
                     <button
                       key={opt.value}
                       type="button"
-                      onClick={() => handleExportForRange(opt.value)}
-                      className="block w-full px-3 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-50"
+                      onClick={() => selectPreset(opt.value)}
+                      className={`block w-full px-3 py-1.5 text-left text-sm ${
+                        menuPreset === opt.value && !exportCustomFrom && !exportCustomTo
+                          ? 'bg-blue-50 font-medium text-blue-700'
+                          : 'text-slate-700 hover:bg-slate-50'
+                      }`}
                     >
                       {opt.label}
                     </button>
                   ))}
                   <div className="border-t border-slate-100 p-2">
-                    <p className="mb-1.5 text-xs font-medium text-slate-500">Custom Range</p>
+                    <div className="mb-1.5 flex items-center justify-between">
+                      <p className="text-xs font-medium text-slate-500">Custom Range</p>
+                      {(exportCustomFrom || exportCustomTo) && (
+                        <button
+                          type="button"
+                          onClick={() => selectPreset('all')}
+                          className="text-xs font-medium text-blue-600 hover:text-blue-700"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
                     <div className="space-y-1.5">
                       <input
                         type="date"
                         value={exportCustomFrom}
-                        onChange={(e) => setExportCustomFrom(e.target.value)}
+                        onChange={(e) => handleExportCustomFromChange(e.target.value)}
                         className={`${inputClass} text-xs`}
                       />
                       <input
                         type="date"
                         value={exportCustomTo}
-                        onChange={(e) => setExportCustomTo(e.target.value)}
+                        onChange={(e) => handleExportCustomToChange(e.target.value)}
                         className={`${inputClass} text-xs`}
                       />
-                      <button
-                        type="button"
-                        onClick={handleExportCustomRange}
-                        disabled={!exportCustomFrom && !exportCustomTo}
-                        className="w-full rounded-md bg-blue-600 px-2 py-1 text-xs font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        Export Range
-                      </button>
                     </div>
+                  </div>
+                  <div className="border-t border-slate-100 p-2">
+                    <button
+                      type="button"
+                      onClick={handleConfirmExport}
+                      className="flex w-full items-center justify-center gap-1.5 rounded-md bg-blue-600 px-2 py-1.5 text-xs font-medium text-white hover:bg-blue-500"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      Export
+                    </button>
                   </div>
                 </div>
               )}
