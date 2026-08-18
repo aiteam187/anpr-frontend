@@ -4,7 +4,10 @@ import Panel from '../../components/ui/Panel';
 import { inputClass } from '../../components/ui/FormField';
 import { getMaxVehiclesPerEmployee, updateMaxVehiclesPerEmployee } from '../../services/settingsService';
 
+type Mode = 'number' | 'unlimited';
+
 export default function MaxVehiclesPerEmployeePanel() {
+  const [mode, setMode] = useState<Mode>('unlimited');
   const [value, setValue] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -13,7 +16,14 @@ export default function MaxVehiclesPerEmployeePanel() {
 
   useEffect(() => {
     getMaxVehiclesPerEmployee()
-      .then((res) => setValue(res.max_vehicles != null ? String(res.max_vehicles) : ''))
+      .then((res) => {
+        if (res.max_vehicles != null) {
+          setMode('number');
+          setValue(String(res.max_vehicles));
+        } else {
+          setMode('unlimited');
+        }
+      })
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load setting'))
       .finally(() => setLoading(false));
   }, []);
@@ -23,12 +33,15 @@ export default function MaxVehiclesPerEmployeePanel() {
     setError(null);
     setSaved(false);
     try {
-      const trimmed = value.trim();
-      const parsed = trimmed ? Number(trimmed) : null;
-      if (parsed !== null && (!Number.isInteger(parsed) || parsed < 1)) {
-        setError('Enter a whole number of 1 or more, or leave blank for unlimited');
-        setSaving(false);
-        return;
+      let parsed: number | null = null;
+      if (mode === 'number') {
+        const trimmed = value.trim();
+        parsed = trimmed ? Number(trimmed) : NaN;
+        if (!Number.isInteger(parsed) || parsed < 1) {
+          setError('Enter a whole number of 1 or more');
+          setSaving(false);
+          return;
+        }
       }
       await updateMaxVehiclesPerEmployee(parsed);
       setSaved(true);
@@ -47,21 +60,48 @@ export default function MaxVehiclesPerEmployeePanel() {
             <Car className="h-4 w-4" />
           </div>
           <p className="text-xs text-slate-500">
-            Limits how many active vehicles can be linked to one employee in Registration. Leave
-            blank for unlimited.
+            Limits how many active vehicles can be linked to one employee in Registration.
           </p>
         </div>
 
-        <input
-          type="number"
-          min={1}
-          step={1}
-          className={inputClass}
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          placeholder="Unlimited"
-          disabled={loading}
-        />
+        <div className="flex gap-4">
+          <label className="flex items-center gap-1.5 text-sm text-slate-700">
+            <input
+              type="radio"
+              name="max-vehicles-mode"
+              checked={mode === 'unlimited'}
+              onChange={() => setMode('unlimited')}
+              disabled={loading}
+              className="border-slate-300"
+            />
+            Unlimited
+          </label>
+          <label className="flex items-center gap-1.5 text-sm text-slate-700">
+            <input
+              type="radio"
+              name="max-vehicles-mode"
+              checked={mode === 'number'}
+              onChange={() => setMode('number')}
+              disabled={loading}
+              className="border-slate-300"
+            />
+            Number
+          </label>
+        </div>
+
+        {mode === 'number' && (
+          <input
+            type="number"
+            min={1}
+            step={1}
+            className={inputClass}
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder="e.g. 2"
+            disabled={loading}
+            autoFocus
+          />
+        )}
 
         {error && <p className="text-xs text-red-600">{error}</p>}
         {saved && !error && <p className="text-xs text-emerald-600">Saved.</p>}
