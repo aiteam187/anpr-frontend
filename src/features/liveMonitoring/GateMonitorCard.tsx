@@ -28,6 +28,21 @@ import type { SystemHealth } from '../../types/health';
 
 const RECENT_COUNT = 2;
 
+// How long the latest event stays announced on the card before it fades
+// back to just the plain "today" count — keeps the banner meaningful
+// ("just happened") instead of showing a stale event forever.
+const NOTICE_WINDOW_MS = 2 * 60 * 1000;
+
+function noticeForRecord(r: ActivityRecord): { message: string; style: string } {
+  if (r.eventType === 'entry') {
+    return { message: 'Vehicle Entered', style: 'border-emerald-200 bg-emerald-50 text-emerald-700' };
+  }
+  if (r.eventType === 'exit') {
+    return { message: 'Vehicle Exited', style: 'border-blue-200 bg-blue-50 text-blue-700' };
+  }
+  return { message: r.note ?? 'Unauthorized', style: 'border-red-200 bg-red-50 text-red-700' };
+}
+
 interface GateMonitorCardProps {
   gate: GateConfig;
   health: SystemHealth | null;
@@ -74,6 +89,15 @@ export default function GateMonitorCard({
   const records = allRecordsForGate
     .filter((r) => r.eventType !== 'unauthorized' || isBlacklisted(r) || isDeactivated(r))
     .slice(0, RECENT_COUNT);
+
+  const overstayedVehicle = activeVehicles.find((v) => v.cam_id === gate.camera_id && v.is_overstayed);
+  const latest = records[0];
+  const isLatestRecent = latest && Date.now() - new Date(latest.time).getTime() < NOTICE_WINDOW_MS;
+  const notice = overstayedVehicle
+    ? { message: `${overstayedVehicle.plate_number} — Vehicle Overstayed`, style: 'border-amber-200 bg-amber-50 text-amber-700' }
+    : isLatestRecent
+      ? { message: `${latest.plateNumber} — ${noticeForRecord(latest).message}`, style: noticeForRecord(latest).style }
+      : null;
 
   const renderActivityRow = (r: ActivityRecord, highlight: boolean) => {
     const vehicle = vehicleByPlate.get(r.plateNumber) ?? null;
@@ -140,8 +164,8 @@ export default function GateMonitorCard({
 
   return (
     <div className="flex flex-col rounded-xl border border-slate-200 bg-white">
-      <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-3">
+        <div className="flex flex-wrap items-center gap-2">
           <h3 className="text-sm font-semibold text-slate-900">{gate.gate_name}</h3>
           <span
             className={`rounded-full px-2 py-0.5 text-[11px] font-medium capitalize ${
@@ -155,6 +179,13 @@ export default function GateMonitorCard({
           <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
             {todayCount} today
           </span>
+          {notice && (
+            <span
+              className={`animate-pulse rounded-full border px-2 py-0.5 text-[11px] font-semibold ${notice.style}`}
+            >
+              {notice.message}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-3">
           {gate.camera_ip && (
