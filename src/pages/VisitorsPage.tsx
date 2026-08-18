@@ -196,6 +196,7 @@ export default function VisitorsPage() {
               kind="authorizedVehicles"
               fallback="visitors.csv"
               params={{ list_type: 'visitor', plate: query.trim() || undefined }}
+              withTimeline
             />
           </div>
         }

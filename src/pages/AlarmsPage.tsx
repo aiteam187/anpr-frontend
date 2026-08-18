@@ -118,7 +118,14 @@ export default function AlarmsPage() {
     setDownloading(true);
     setDownloadError(null);
     try {
-      await downloadExport('alarmHistory', 'alarm_history.csv', format);
+      // Export exactly what's on screen — the DateRangeDropdown/severity
+      // filters below only filtered the visible table before; this was
+      // never actually forwarded to the export itself.
+      await downloadExport('alarmHistory', 'alarm_history.csv', format, {
+        severity: severityFilter || undefined,
+        start_date: dateRangeMs.start !== null ? new Date(dateRangeMs.start).toISOString() : undefined,
+        end_date: dateRangeMs.end !== null ? new Date(dateRangeMs.end).toISOString() : undefined,
+      });
     } catch (err) {
       setDownloadError(err instanceof Error ? err.message : 'Download failed');
     } finally {
