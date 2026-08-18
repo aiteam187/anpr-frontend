@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Download } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ChevronDown, Download } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import Panel from '../components/ui/Panel';
 import Select from '../components/ui/Select';
@@ -11,7 +11,7 @@ import { getActiveVehicles, getHistory } from '../services/dashboardService';
 import { getAuthorizedVehicles } from '../services/authorizedVehiclesService';
 import { getGates } from '../services/gatesService';
 import { formatDateTime, formatElapsed } from '../utils/format';
-import { computeRangeMs, type RangeSelection } from '../utils/reportDateRange';
+import { computeRangeMs, RANGE_PRESETS, type RangeSelection } from '../utils/reportDateRange';
 import type { ActiveVehicle, HistoryRecord } from '../types/detection';
 import type { AuthorizedVehicle } from '../types/authorizedVehicle';
 import type { GateConfig } from '../types/gate';
@@ -119,6 +119,19 @@ export default function ReportsPage() {
   const [rangePreset, setRangePreset] = useState<RangeSelection>('all');
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showExportMenu) return;
+    const handleClick = (e: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
+        setShowExportMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showExportMenu]);
 
   useEffect(() => {
     getGates()
@@ -274,18 +287,22 @@ export default function ReportsPage() {
     </>
   );
 
-  const handleDownload = async () => {
+  // Clicking Export opens this menu instead of downloading immediately —
+  // picking a timeline both runs the export for exactly that range and
+  // syncs the on-screen DateRangeDropdown/table filter to match, so what
+  // you just downloaded is also what you're now looking at.
+  const handleExportForRange = async (preset: RangeSelection) => {
+    setShowExportMenu(false);
+    setRangePreset(preset);
+    setCustomFrom('');
+    setCustomTo('');
     setDownloading(true);
     setError(null);
     try {
-      // Export exactly what's on screen: same timeline filter as the
-      // DateRangeDropdown above the table, plus the list_type for tabs
-      // backed by the shared authorizedVehicles export endpoint (without
-      // this, Whitelist/Blacklist/Visitor would all export every list mixed
-      // together instead of just their own).
+      const range = computeRangeMs(preset, '', '');
       const params: Record<string, string | undefined> = {
-        start_date: dateRangeMs.start !== null ? new Date(dateRangeMs.start).toISOString() : undefined,
-        end_date: dateRangeMs.end !== null ? new Date(dateRangeMs.end).toISOString() : undefined,
+        start_date: range.start !== null ? new Date(range.start).toISOString() : undefined,
+        end_date: range.end !== null ? new Date(range.end).toISOString() : undefined,
       };
       if (tab === 'whitelist' || tab === 'blacklist' || tab === 'visitor') {
         params.list_type = tab === 'whitelist' ? 'whitelist' : tab === 'blacklist' ? 'blacklist' : 'visitor';
@@ -297,6 +314,11 @@ export default function ReportsPage() {
       setDownloading(false);
     }
   };
+
+  const EXPORT_MENU_OPTIONS: { value: RangeSelection; label: string }[] = [
+    { value: 'all', label: 'All Time' },
+    ...RANGE_PRESETS,
+  ];
 
   return (
     <div className="space-y-4">
@@ -335,15 +357,32 @@ export default function ReportsPage() {
                 </option>
               ))}
             </Select>
-            <button
-              type="button"
-              onClick={handleDownload}
-              disabled={downloading}
-              className="flex h-9 items-center gap-1.5 rounded-md bg-blue-600 px-3 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <Download className="h-4 w-4" />
-              {downloading ? 'Downloading…' : `Export ${format.toUpperCase()}`}
-            </button>
+            <div className="relative" ref={exportMenuRef}>
+              <button
+                type="button"
+                onClick={() => setShowExportMenu((v) => !v)}
+                disabled={downloading}
+                className="flex h-9 items-center gap-1.5 rounded-md bg-blue-600 px-3 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <Download className="h-4 w-4" />
+                {downloading ? 'Downloading…' : `Export ${format.toUpperCase()}`}
+                <ChevronDown className="h-3.5 w-3.5" />
+              </button>
+              {showExportMenu && (
+                <div className="absolute right-0 top-full z-20 mt-1 w-40 rounded-md border border-slate-200 bg-white py-1 shadow-lg">
+                  {EXPORT_MENU_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => handleExportForRange(opt.value)}
+                      className="block w-full px-3 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-50"
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         }
       >
