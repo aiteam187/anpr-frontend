@@ -178,7 +178,8 @@ export default function RoleMasterPage() {
                         <button
                           type="button"
                           onClick={() => handleToggleEnabled(role)}
-                          disabled={locked}
+                          disabled={locked || (isOwnRole && role.enabled)}
+                          title={isOwnRole && role.enabled ? "Can't disable your own role" : undefined}
                           className="rounded-md px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-transparent"
                         >
                           {role.enabled ? 'Disable' : 'Enable'}
@@ -186,9 +187,9 @@ export default function RoleMasterPage() {
                         <button
                           type="button"
                           onClick={() => setDeleteTarget(role)}
-                          disabled={locked}
+                          disabled={locked || isOwnRole}
                           className="rounded-md p-1.5 text-red-600 hover:bg-slate-100 hover:text-red-700 disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-transparent"
-                          title="Delete permanently"
+                          title={isOwnRole ? "Can't delete your own role" : 'Delete permanently'}
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
