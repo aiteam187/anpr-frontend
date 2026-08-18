@@ -37,10 +37,11 @@ export default function VisitorsPage() {
   const [toggleTarget, setToggleTarget] = useState<AuthorizedVehicle | null>(null);
   const [revokeTarget, setRevokeTarget] = useState<AuthorizedVehicle | null>(null);
   const [query, setQuery] = useState('');
-  // Defaults to Active so a deleted/deactivated visitor disappears from the
-  // everyday view immediately — it's still in the DB (soft delete), just
-  // hidden until you switch this filter to Inactive to find/restore it.
-  const [statusFilter, setStatusFilter] = useState<'' | 'active' | 'inactive'>('active');
+  // Defaults to showing all statuses — an inactive visitor stays visible in
+  // the table with its badge rather than vanishing. Delete is the action
+  // that actually removes it from view (see deleted_at on the backend);
+  // this filter is just for browsing by status.
+  const [statusFilter, setStatusFilter] = useState<'' | 'active' | 'inactive'>('');
 
   const refresh = useCallback(async () => {
     try {
