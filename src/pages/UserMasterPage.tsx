@@ -92,6 +92,10 @@ function AccountsTab() {
   const [error, setError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingUser, setEditingUser] = useState<UserAccount | null>(null);
+  const [pendingCreate, setPendingCreate] = useState<UserCreatePayload | null>(null);
+  const [pendingUpdate, setPendingUpdate] = useState<{ user: UserAccount; payload: UserUpdatePayload } | null>(
+    null,
+  );
   const [query, setQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<'' | 'active' | 'inactive'>('');
@@ -137,26 +141,40 @@ function AccountsTab() {
     setPage(1);
   }, [query, roleFilter, statusFilter, setPage]);
 
+  // Add/Edit stage their submitted payload and wait for an explicit
+  // ConfirmDialog before actually calling the API.
   const handleCreate = async (payload: UserCreatePayload) => {
-    if (!token) return;
-    await createUser(token, payload);
     setShowAddModal(false);
-    await refresh();
+    setPendingCreate(payload);
   };
 
   const handleUpdate = async (payload: UserUpdatePayload) => {
-    if (!token || !editingUser) return;
-    await updateUser(token, editingUser.id, payload);
+    if (!editingUser) return;
+    setPendingUpdate({ user: editingUser, payload });
+    setEditingUser(null);
+  };
+
+  const handleConfirmCreate = async () => {
+    if (!token || !pendingCreate) return;
+    await createUser(token, pendingCreate);
+    setPendingCreate(null);
+    await refresh();
+  };
+
+  const handleConfirmUpdate = async () => {
+    if (!token || !pendingUpdate) return;
+    const { user, payload } = pendingUpdate;
+    await updateUser(token, user.id, payload);
     // Editing your own account doesn't re-run login, so the navbar's cached
     // name/role would otherwise keep showing whatever was true at login
     // until the next one — patch the live session here instead.
-    if (currentUser && editingUser.id === currentUser.id) {
+    if (currentUser && user.id === currentUser.id) {
       updateAuthUser({
         ...(payload.full_name != null && { full_name: payload.full_name }),
         ...(payload.role != null && { role: payload.role }),
       });
     }
-    setEditingUser(null);
+    setPendingUpdate(null);
     await refresh();
   };
 
@@ -251,6 +269,24 @@ function AccountsTab() {
           onSubmit={handleUpdate}
         />
       )}
+      {pendingCreate && (
+        <ConfirmDialog
+          title="Add User"
+          message={`Add "${pendingCreate.username}" as a new user account?`}
+          confirmLabel="Add"
+          onConfirm={handleConfirmCreate}
+          onClose={() => setPendingCreate(null)}
+        />
+      )}
+      {pendingUpdate && (
+        <ConfirmDialog
+          title="Save Changes"
+          message={`Save these changes to "${pendingUpdate.user.username}"?`}
+          confirmLabel="Save Changes"
+          onConfirm={handleConfirmUpdate}
+          onClose={() => setPendingUpdate(null)}
+        />
+      )}
     </div>
   );
 }
@@ -264,6 +300,8 @@ function RolesTab() {
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Role | null>(null);
   const [permissionsFor, setPermissionsFor] = useState<Role | null>(null);
+  const [pendingCreateName, setPendingCreateName] = useState<string | null>(null);
+  const [pendingRename, setPendingRename] = useState<{ role: Role; name: string } | null>(null);
 
   const { page, totalPages, pageItems, rangeStart, rangeEnd, totalCount, onPrev, onNext } =
     usePagination(roles);
@@ -284,16 +322,30 @@ function RolesTab() {
     refresh();
   }, [refresh]);
 
+  // Add/Rename stage their submitted name and wait for an explicit
+  // ConfirmDialog before actually calling the API.
   const handleCreate = async (name: string) => {
-    await createRole(name);
     setShowAddModal(false);
-    await refresh();
+    setPendingCreateName(name);
   };
 
   const handleRename = async (name: string) => {
     if (!editingRole) return;
-    await updateRole(editingRole.id, { name });
+    setPendingRename({ role: editingRole, name });
     setEditingRole(null);
+  };
+
+  const handleConfirmCreate = async () => {
+    if (pendingCreateName === null) return;
+    await createRole(pendingCreateName);
+    setPendingCreateName(null);
+    await refresh();
+  };
+
+  const handleConfirmRename = async () => {
+    if (!pendingRename) return;
+    await updateRole(pendingRename.role.id, { name: pendingRename.name });
+    setPendingRename(null);
     await refresh();
     // Renaming a role changes what "my own role" even resolves to, if it's
     // the one you're logged in as — refetch rather than let this session's
@@ -454,6 +506,24 @@ function RolesTab() {
           initialName={editingRole.name}
           onClose={() => setEditingRole(null)}
           onSubmit={handleRename}
+        />
+      )}
+      {pendingCreateName !== null && (
+        <ConfirmDialog
+          title="Add Role"
+          message={`Add "${pendingCreateName}" as a new role?`}
+          confirmLabel="Add"
+          onConfirm={handleConfirmCreate}
+          onClose={() => setPendingCreateName(null)}
+        />
+      )}
+      {pendingRename && (
+        <ConfirmDialog
+          title="Rename Role"
+          message={`Rename the "${pendingRename.role.name}" role to "${pendingRename.name}"?`}
+          confirmLabel="Save Changes"
+          onConfirm={handleConfirmRename}
+          onClose={() => setPendingRename(null)}
         />
       )}
       {deleteTarget && (

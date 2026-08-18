@@ -36,6 +36,10 @@ export default function VisitorsPage() {
   const [extendTarget, setExtendTarget] = useState<AuthorizedVehicle | null>(null);
   const [toggleTarget, setToggleTarget] = useState<AuthorizedVehicle | null>(null);
   const [revokeTarget, setRevokeTarget] = useState<AuthorizedVehicle | null>(null);
+  const [pendingAdd, setPendingAdd] = useState<NewVisitorInput | null>(null);
+  const [pendingEdit, setPendingEdit] = useState<{ visitor: AuthorizedVehicle; input: VisitorEditInput } | null>(
+    null,
+  );
   const [query, setQuery] = useState('');
   // Defaults to showing all statuses — an inactive visitor stays visible in
   // the table with its badge rather than vanishing. Delete is the action
@@ -71,31 +75,46 @@ export default function VisitorsPage() {
       });
   }, [refresh]);
 
+  // Add/Edit stage their submitted input and wait for an explicit
+  // ConfirmDialog before actually calling the API.
   const handleAdd = async (input: NewVisitorInput) => {
-    await addAuthorizedVehicle({ plate_number: input.plateNumber });
-    await switchListType(input.plateNumber, {
-      list_type: 'visitor',
-      visit_purpose: input.visitPurpose,
-      visiting_whom: input.visitingWhom,
-      valid_from: input.validFrom,
-      valid_until: input.validUntil,
-    });
-    await updateVehicleDetails(input.plateNumber, input.details);
     setShowAddModal(false);
-    await refresh();
+    setPendingAdd(input);
   };
 
   const handleEdit = async (input: VisitorEditInput) => {
     if (!editingVisitor) return;
-    await switchListType(editingVisitor.plate_number, {
+    setPendingEdit({ visitor: editingVisitor, input });
+    setEditingVisitor(null);
+  };
+
+  const handleConfirmAdd = async () => {
+    if (!pendingAdd) return;
+    await addAuthorizedVehicle({ plate_number: pendingAdd.plateNumber });
+    await switchListType(pendingAdd.plateNumber, {
+      list_type: 'visitor',
+      visit_purpose: pendingAdd.visitPurpose,
+      visiting_whom: pendingAdd.visitingWhom,
+      valid_from: pendingAdd.validFrom,
+      valid_until: pendingAdd.validUntil,
+    });
+    await updateVehicleDetails(pendingAdd.plateNumber, pendingAdd.details);
+    setPendingAdd(null);
+    await refresh();
+  };
+
+  const handleConfirmEdit = async () => {
+    if (!pendingEdit) return;
+    const { visitor, input } = pendingEdit;
+    await switchListType(visitor.plate_number, {
       list_type: 'visitor',
       visit_purpose: input.visitPurpose,
       visiting_whom: input.visitingWhom,
       valid_from: input.validFrom,
       valid_until: input.validUntil,
     });
-    await updateVehicleDetails(editingVisitor.plate_number, input.details);
-    setEditingVisitor(null);
+    await updateVehicleDetails(visitor.plate_number, input.details);
+    setPendingEdit(null);
     await refresh();
   };
 
@@ -250,6 +269,24 @@ export default function VisitorsPage() {
           visitor={extendTarget}
           onClose={() => setExtendTarget(null)}
           onSubmit={handleExtend}
+        />
+      )}
+      {pendingAdd && (
+        <ConfirmDialog
+          title="Add Visitor"
+          message={`Add ${pendingAdd.plateNumber} as a new visitor?`}
+          confirmLabel="Add"
+          onConfirm={handleConfirmAdd}
+          onClose={() => setPendingAdd(null)}
+        />
+      )}
+      {pendingEdit && (
+        <ConfirmDialog
+          title="Save Changes"
+          message={`Save these changes to ${pendingEdit.visitor.plate_number}?`}
+          confirmLabel="Save Changes"
+          onConfirm={handleConfirmEdit}
+          onClose={() => setPendingEdit(null)}
         />
       )}
       {toggleTarget && (
