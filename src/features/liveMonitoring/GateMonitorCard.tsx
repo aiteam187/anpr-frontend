@@ -36,6 +36,7 @@ interface Popup {
   plateNumber: string;
   message: string;
   style: string;
+  expiresAt: number;
 }
 
 function popupForRecord(r: ActivityRecord): Pick<Popup, 'message' | 'style'> {
@@ -104,7 +105,7 @@ export default function GateMonitorCard({
   // would otherwise re-show the same notice repeatedly since `latest` and
   // `overstayedVehicle` stay truthy across many re-renders.
   useEffect(() => {
-    const next: Popup | null = overstayedVehicle
+    const next: Omit<Popup, 'expiresAt'> | null = overstayedVehicle
       ? {
           key: `overstay-${overstayedVehicle.plate_number}`,
           plateNumber: overstayedVehicle.plate_number,
@@ -117,10 +118,22 @@ export default function GateMonitorCard({
 
     if (!next || next.key === lastPopupKeyRef.current) return;
     lastPopupKeyRef.current = next.key;
-    setPopup(next);
-    const timer = setTimeout(() => setPopup(null), POPUP_DURATION_MS);
-    return () => clearTimeout(timer);
+    setPopup({ ...next, expiresAt: Date.now() + POPUP_DURATION_MS });
   }, [overstayedVehicle?.plate_number, latest?.key]);
+
+  // Dismissal is a separate effect, tied only to the current popup's own
+  // key — so it can't be disrupted by the detection effect above re-running
+  // (e.g. due to poll refreshes) and always closes exactly on schedule.
+  useEffect(() => {
+    if (!popup) return;
+    const remaining = popup.expiresAt - Date.now();
+    if (remaining <= 0) {
+      setPopup(null);
+      return;
+    }
+    const timer = setTimeout(() => setPopup(null), remaining);
+    return () => clearTimeout(timer);
+  }, [popup]);
 
   const renderActivityRow = (r: ActivityRecord, highlight: boolean) => {
     const vehicle = vehicleByPlate.get(r.plateNumber) ?? null;
