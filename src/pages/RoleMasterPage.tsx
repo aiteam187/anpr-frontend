@@ -32,6 +32,7 @@ const RESOURCE_LABELS: Record<string, string> = {
   alarms: 'Alarms & Events',
   audit_logs: 'Audit Logs',
   settings: 'Settings',
+  developer: 'Developer (DB credentials, webhook URL)',
 };
 
 export default function RoleMasterPage() {
