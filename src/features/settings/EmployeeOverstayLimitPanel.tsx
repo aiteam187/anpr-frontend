@@ -2,19 +2,16 @@ import { useEffect, useState } from 'react';
 import { Clock3 } from 'lucide-react';
 import Panel from '../../components/ui/Panel';
 import { inputClass } from '../../components/ui/FormField';
-import Select from '../../components/ui/Select';
 import {
   getEmployeeOverstayLimitHours,
   updateEmployeeOverstayLimitHours,
 } from '../../services/settingsService';
 
-type Unit = 'minutes' | 'hours';
-
 const MAX_HOURS = 720; // 30 days, matches the backend's own bound
 
 export default function EmployeeOverstayLimitPanel() {
-  const [unit, setUnit] = useState<Unit>('hours');
-  const [value, setValue] = useState('');
+  const [hours, setHours] = useState('');
+  const [minutes, setMinutes] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,17 +20,10 @@ export default function EmployeeOverstayLimitPanel() {
   useEffect(() => {
     getEmployeeOverstayLimitHours()
       .then((res) => {
-        // Show whatever unit round-trips cleanly for the stored value —
-        // under an hour is meaningless to a user as "0.08 hours", so default
-        // to minutes there; otherwise hours, so a plain "8" doesn't turn
-        // into "480" the moment the page loads.
-        if (res.hours < 1) {
-          setUnit('minutes');
-          setValue(String(Math.round(res.hours * 60)));
-        } else {
-          setUnit('hours');
-          setValue(String(res.hours));
-        }
+        const wholeHours = Math.floor(res.hours);
+        const remainderMinutes = Math.round((res.hours - wholeHours) * 60);
+        setHours(String(wholeHours));
+        setMinutes(String(remainderMinutes));
       })
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load setting'))
       .finally(() => setLoading(false));
@@ -44,23 +34,25 @@ export default function EmployeeOverstayLimitPanel() {
     setError(null);
     setSaved(false);
     try {
-      const raw = Number(value.trim());
-      if (!Number.isFinite(raw) || raw <= 0) {
-        setError(`Enter a number of ${unit} greater than 0`);
+      const h = hours.trim() ? Number(hours.trim()) : 0;
+      const m = minutes.trim() ? Number(minutes.trim()) : 0;
+      if (!Number.isFinite(h) || h < 0 || !Number.isFinite(m) || m < 0 || m > 59) {
+        setError('Enter whole hours and 0–59 minutes');
         setSaving(false);
         return;
       }
-      const hours = unit === 'minutes' ? raw / 60 : raw;
-      if (hours > MAX_HOURS) {
-        setError(
-          unit === 'minutes'
-            ? `Enter up to ${MAX_HOURS * 60} minutes (30 days)`
-            : `Enter up to ${MAX_HOURS} hours (30 days)`,
-        );
+      const totalHours = h + m / 60;
+      if (totalHours <= 0) {
+        setError('Enter a duration greater than 0');
         setSaving(false);
         return;
       }
-      await updateEmployeeOverstayLimitHours(hours);
+      if (totalHours > MAX_HOURS) {
+        setError(`Enter up to ${MAX_HOURS} hours (30 days) total`);
+        setSaving(false);
+        return;
+      }
+      await updateEmployeeOverstayLimitHours(totalHours);
       setSaved(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save setting');
@@ -83,38 +75,31 @@ export default function EmployeeOverstayLimitPanel() {
         </div>
 
         <div className="flex items-center gap-2">
-          <input
-            type="number"
-            min={1}
-            step={unit === 'minutes' ? 1 : 0.5}
-            className={inputClass}
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            disabled={loading}
-          />
-          <Select
-            value={unit}
-            onChange={(e) => {
-              const nextUnit = e.target.value as Unit;
-              // Convert the currently-typed number across so switching units
-              // doesn't silently change what you're about to save.
-              const raw = Number(value.trim());
-              if (Number.isFinite(raw)) {
-                setValue(
-                  nextUnit === 'minutes'
-                    ? String(Math.round(raw * 60))
-                    : String(Math.round((raw / 60) * 100) / 100),
-                );
-              }
-              setUnit(nextUnit);
-            }}
-            fullWidth={false}
-            className="w-28"
-            disabled={loading}
-          >
-            <option value="minutes">Minutes</option>
-            <option value="hours">Hours</option>
-          </Select>
+          <label className="flex-1">
+            <span className="mb-1 block text-xs font-medium text-slate-500">Hours</span>
+            <input
+              type="number"
+              min={0}
+              step={1}
+              className={inputClass}
+              value={hours}
+              onChange={(e) => setHours(e.target.value)}
+              disabled={loading}
+            />
+          </label>
+          <label className="flex-1">
+            <span className="mb-1 block text-xs font-medium text-slate-500">Minutes</span>
+            <input
+              type="number"
+              min={0}
+              max={59}
+              step={1}
+              className={inputClass}
+              value={minutes}
+              onChange={(e) => setMinutes(e.target.value)}
+              disabled={loading}
+            />
+          </label>
         </div>
 
         {error && <p className="text-xs text-red-600">{error}</p>}
