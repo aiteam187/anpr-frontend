@@ -3,9 +3,10 @@ import Modal from '../../components/ui/Modal';
 import FormField, { inputClass } from '../../components/ui/FormField';
 import VehicleProfileFields, {
   emptyVehicleProfileForm,
+  validateVehicleProfile,
   type VehicleProfileForm,
 } from '../shared/VehicleProfileFields';
-import { validateDateRange, validatePhone, validateRequired } from '../../utils/validation';
+import { validateDateRange, validateRequired } from '../../utils/validation';
 import type { AuthorizedVehicle, AuthorizedVehicleDetailsPayload } from '../../types/authorizedVehicle';
 
 export interface VisitorEditInput {
@@ -86,15 +87,13 @@ export default function EditVisitorModal({ visitor, onClose, onSubmit }: EditVis
     setProfile((prev) => ({ ...prev, [key]: value }));
 
   const validate = () => {
-    const next: Record<string, string> = {};
+    const next: Record<string, string> = { ...validateVehicleProfile(profile, { requireOwner: true }) };
     const purposeErr = validateRequired(visitPurpose, 'Purpose of visit');
     const whomErr = validateRequired(visitingWhom, 'Visiting whom');
     const rangeErr = validateDateRange(validFrom, validUntil);
-    const phoneErr = validatePhone(profile.owner_phone);
     if (purposeErr) next.visitPurpose = purposeErr;
     if (whomErr) next.visitingWhom = whomErr;
     if (rangeErr) next.range = rangeErr;
-    if (phoneErr) next.owner_phone = phoneErr;
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -170,6 +169,7 @@ export default function EditVisitorModal({ visitor, onClose, onSubmit }: EditVis
           errors={errors}
           ownerLabel="Visitor Name"
           ownerSectionLabel="Visitor"
+          requireOwner
         />
 
         <FormField label="Notes">

@@ -3,11 +3,11 @@ import Modal from '../../components/ui/Modal';
 import FormField, { inputClass } from '../../components/ui/FormField';
 import VehicleProfileFields, {
   emptyVehicleProfileForm,
+  validateVehicleProfile,
   type VehicleProfileForm,
 } from '../shared/VehicleProfileFields';
 import {
   validateDateRange,
-  validatePhone,
   validatePlateNumber,
   validateRequired,
 } from '../../utils/validation';
@@ -75,17 +75,15 @@ export default function AddVisitorModal({ onClose, onSubmit }: AddVisitorModalPr
     setProfile((prev) => ({ ...prev, [key]: value }));
 
   const validate = () => {
-    const next: Record<string, string> = {};
+    const next: Record<string, string> = { ...validateVehicleProfile(profile, { requireOwner: true }) };
     const plateErr = validatePlateNumber(plateNumber);
     const purposeErr = validateRequired(visitPurpose, 'Purpose of visit');
     const whomErr = validateRequired(visitingWhom, 'Visiting whom');
     const rangeErr = validateDateRange(validFrom, validUntil);
-    const phoneErr = validatePhone(profile.owner_phone);
     if (plateErr) next.plateNumber = plateErr;
     if (purposeErr) next.visitPurpose = purposeErr;
     if (whomErr) next.visitingWhom = whomErr;
     if (rangeErr) next.range = rangeErr;
-    if (phoneErr) next.owner_phone = phoneErr;
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -174,6 +172,7 @@ export default function AddVisitorModal({ onClose, onSubmit }: AddVisitorModalPr
           errors={errors}
           ownerLabel="Visitor Name"
           ownerSectionLabel="Visitor"
+          requireOwner
         />
 
         <FormField label="Notes">

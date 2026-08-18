@@ -4,6 +4,7 @@ import FormField, { inputClass } from '../../components/ui/FormField';
 import EmployeeLinkField from '../shared/EmployeeLinkField';
 import VehicleProfileFields, {
   emptyVehicleProfileForm,
+  validateVehicleProfile,
 } from '../shared/VehicleProfileFields';
 import type { AuthorizedVehicle, AuthorizedVehicleDetailsPayload } from '../../types/authorizedVehicle';
 import type { Employee } from '../../types/masters';
@@ -48,14 +49,22 @@ export default function VehicleDetailsModal({
     insurance_validity: toDateInputValue(vehicle.insurance_validity),
     puc_validity: toDateInputValue(vehicle.puc_validity),
   });
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   const update = (key: keyof typeof form, value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
+  const validate = () => {
+    const next = validateVehicleProfile(form);
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (!validate()) return;
     setSubmitting(true);
     setFormError(null);
     try {
@@ -88,7 +97,13 @@ export default function VehicleDetailsModal({
           onClear={() => setSelectedEmployee(null)}
         />
 
-        <VehicleProfileFields form={form} onChange={update} hideOwnerSection vehicleTypeOptions={vehicleTypes} />
+        <VehicleProfileFields
+          form={form}
+          onChange={update}
+          errors={errors}
+          hideOwnerSection
+          vehicleTypeOptions={vehicleTypes}
+        />
 
         <FormField label="Notes">
           <input className={inputClass} value={notes} onChange={(e) => setNotes(e.target.value)} />

@@ -3,12 +3,16 @@ import type { ReactNode } from 'react';
 interface FormFieldProps {
   label: string;
   children: ReactNode;
+  required?: boolean;
 }
 
-export default function FormField({ label, children }: FormFieldProps) {
+export default function FormField({ label, children, required = false }: FormFieldProps) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs font-medium text-slate-500">{label}</span>
+      <span className="mb-1 block text-xs font-medium text-slate-500">
+        {label}
+        {required && <span className="text-red-500"> *</span>}
+      </span>
       {children}
     </label>
   );

@@ -2,7 +2,10 @@ import { useState, type FormEvent } from 'react';
 import Modal from '../../components/ui/Modal';
 import FormField, { inputClass } from '../../components/ui/FormField';
 import EmployeeLinkField from '../shared/EmployeeLinkField';
-import VehicleProfileFields, { emptyVehicleProfileForm } from '../shared/VehicleProfileFields';
+import VehicleProfileFields, {
+  emptyVehicleProfileForm,
+  validateVehicleProfile,
+} from '../shared/VehicleProfileFields';
 import { validatePlateNumber } from '../../utils/validation';
 import type { AuthorizedVehicleCreatePayload } from '../../types/authorizedVehicle';
 import type { Employee } from '../../types/masters';
@@ -35,7 +38,7 @@ export default function AddVehicleModal({ employees, vehicleTypes, onClose, onSu
   const update = (key: keyof typeof form, value: string) => setForm((prev) => ({ ...prev, [key]: value }));
 
   const validate = () => {
-    const next: Record<string, string> = {};
+    const next: Record<string, string> = { ...validateVehicleProfile(form) };
     const plateErr = validatePlateNumber(plateNumber);
     if (plateErr) next.plate_number = plateErr;
     setErrors(next);
