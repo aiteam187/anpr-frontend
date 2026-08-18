@@ -344,29 +344,39 @@ function PermissionsMatrixModal({ role, onClose }: { role: Role; onClose: () => 
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {grid.map((entry) => (
-                  <tr key={entry.resource} className="bg-white">
-                    <td className="px-4 py-2.5 text-slate-700">
-                      {RESOURCE_LABELS[entry.resource] ?? entry.resource}
-                    </td>
-                    <td className="px-4 py-2.5 text-center">
-                      <input
-                        type="checkbox"
-                        checked={entry.can_view}
-                        onChange={() => toggle(entry.resource, 'can_view')}
-                        className="rounded border-slate-300"
-                      />
-                    </td>
-                    <td className="px-4 py-2.5 text-center">
-                      <input
-                        type="checkbox"
-                        checked={entry.can_manage}
-                        onChange={() => toggle(entry.resource, 'can_manage')}
-                        className="rounded border-slate-300"
-                      />
-                    </td>
-                  </tr>
-                ))}
+                {grid.map((entry) => {
+                  const locked = entry.resource === 'developer';
+                  return (
+                    <tr key={entry.resource} className="bg-white">
+                      <td className="px-4 py-2.5 text-slate-700">
+                        {RESOURCE_LABELS[entry.resource] ?? entry.resource}
+                        {locked && (
+                          <span className="ml-2 text-xs font-normal text-slate-400">
+                            (locked — not editable here)
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5 text-center">
+                        <input
+                          type="checkbox"
+                          checked={entry.can_view}
+                          disabled={locked}
+                          onChange={() => toggle(entry.resource, 'can_view')}
+                          className="rounded border-slate-300 disabled:cursor-not-allowed disabled:opacity-40"
+                        />
+                      </td>
+                      <td className="px-4 py-2.5 text-center">
+                        <input
+                          type="checkbox"
+                          checked={entry.can_manage}
+                          disabled={locked}
+                          onChange={() => toggle(entry.resource, 'can_manage')}
+                          className="rounded border-slate-300 disabled:cursor-not-allowed disabled:opacity-40"
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
