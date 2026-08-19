@@ -89,8 +89,8 @@ export default function GateFormModal({ onClose, onSubmit }: GateFormModalProps)
           <input
             className={inputClass}
             value={form.camera_id}
-            onChange={(e) => update('camera_id', e.target.value)}
-            placeholder="e.g. 1803001cce65"
+            onChange={(e) => update('camera_id', e.target.value.toUpperCase())}
+            placeholder="e.g. 1803001CCE65"
           />
         </FormField>
         <FormField label="Camera IP" required>
@@ -282,8 +282,8 @@ export function EditGateModal({ gate, onClose, onSubmit }: EditGateModalProps) {
           <input
             className={inputClass}
             value={cameraId}
-            onChange={(e) => setCameraId(e.target.value)}
-            placeholder="e.g. 1803001cce65"
+            onChange={(e) => setCameraId(e.target.value.toUpperCase())}
+            placeholder="e.g. 1803001CCE65"
           />
         </FormField>
         <FormField label="Camera IP">
