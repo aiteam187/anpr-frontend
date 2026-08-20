@@ -1,6 +1,10 @@
+import { useState } from 'react';
 import FormField, { inputClass } from '../../components/ui/FormField';
 import Select from '../../components/ui/Select';
 import {
+  sanitizeEmployeeIdInput,
+  sanitizePhoneInput,
+  todayDateInputValue,
   validateEmployeeId,
   validatePhone,
   validateRequired,
@@ -57,7 +61,7 @@ export function emptyVehicleProfileForm(): VehicleProfileForm {
  * instead, so they're skipped there. */
 export function validateVehicleProfile(
   form: VehicleProfileForm,
-  opts: { requireOwner?: boolean } = {},
+  opts: { requireOwner?: boolean; hideEmployeeFields?: boolean } = {},
 ): Record<string, string> {
   const errors: Record<string, string> = {};
   const set = (key: keyof VehicleProfileForm, err: string | null) => {
@@ -70,7 +74,9 @@ export function validateVehicleProfile(
   } else {
     set('owner_phone', validatePhone(form.owner_phone));
   }
-  set('owner_employee_id', validateEmployeeId(form.owner_employee_id));
+  if (!opts.hideEmployeeFields) {
+    set('owner_employee_id', validateEmployeeId(form.owner_employee_id));
+  }
   set('vehicle_type', validateRequired(form.vehicle_type, 'Vehicle Type'));
   set('license_validity', validateValidityDate(form.license_validity, 'License Validity'));
   set('insurance_validity', validateValidityDate(form.insurance_validity, 'Insurance Validity'));
@@ -89,6 +95,8 @@ interface VehicleProfileFieldsProps {
   disableOwnerFields?: boolean;
   /** Hides the owner section entirely — set when an employee-link control is rendered elsewhere instead. */
   hideOwnerSection?: boolean;
+  /** Hides Department / Employee ID / Reporting Manager / Registered With Company On — these are Employee Master concepts that don't apply to a visitor who typically isn't in that master. */
+  hideEmployeeFields?: boolean;
   /** Vehicle Type dropdown options — pass the live Vehicle Type Master list (see vehicleTypesApi) so admin-added types actually show up. Falls back to the fixed VEHICLE_TYPES list for callers that haven't wired that up yet. */
   vehicleTypeOptions?: string[];
   /** Fuel Type dropdown options — pass the live Fuel Type Master list (see fuelTypesApi) so admin-added fuel types actually show up. Falls back to the fixed FUEL_TYPES list for callers that haven't wired that up yet. */
@@ -105,10 +113,31 @@ export default function VehicleProfileFields({
   ownerSectionLabel = 'Owner',
   disableOwnerFields = false,
   hideOwnerSection = false,
+  hideEmployeeFields = false,
   vehicleTypeOptions = VEHICLE_TYPES,
   fuelTypeOptions = FUEL_TYPES,
   requireOwner = false,
 }: VehicleProfileFieldsProps) {
+  const [localErrors, setLocalErrors] = useState<{ owner_phone?: string; owner_employee_id?: string }>({});
+
+  const handlePhoneChange = (value: string) => {
+    const sanitized = sanitizePhoneInput(value);
+    onChange('owner_phone', sanitized);
+    const err = requireOwner
+      ? validateRequired(sanitized, 'Phone') ?? validatePhone(sanitized)
+      : validatePhone(sanitized);
+    setLocalErrors((prev) => ({ ...prev, owner_phone: err ?? undefined }));
+  };
+
+  const handleEmployeeIdChange = (value: string) => {
+    const sanitized = sanitizeEmployeeIdInput(value);
+    onChange('owner_employee_id', sanitized);
+    setLocalErrors((prev) => ({ ...prev, owner_employee_id: validateEmployeeId(sanitized) ?? undefined }));
+  };
+
+  const ownerPhoneError = localErrors.owner_phone ?? errors.owner_phone;
+  const ownerEmployeeIdError = localErrors.owner_employee_id ?? errors.owner_employee_id;
+
   return (
     <>
       {!hideOwnerSection && (
@@ -130,47 +159,55 @@ export default function VehicleProfileFields({
               <input
                 className={inputClass}
                 value={form.owner_phone}
-                onChange={(e) => onChange('owner_phone', e.target.value)}
-                placeholder="e.g. +919876543210"
+                onChange={(e) => handlePhoneChange(e.target.value)}
+                inputMode="numeric"
+                maxLength={10}
+                placeholder="10-digit mobile number"
                 disabled={disableOwnerFields}
               />
-              {errors.owner_phone && <p className="mt-1 text-xs text-red-600">{errors.owner_phone}</p>}
+              {ownerPhoneError && <p className="mt-1 text-xs text-red-600">{ownerPhoneError}</p>}
             </FormField>
-            <FormField label="Department">
-              <input
-                className={inputClass}
-                value={form.owner_department}
-                onChange={(e) => onChange('owner_department', e.target.value)}
-                disabled={disableOwnerFields}
-              />
-            </FormField>
-            <FormField label="Employee ID">
-              <input
-                className={inputClass}
-                value={form.owner_employee_id}
-                onChange={(e) => onChange('owner_employee_id', e.target.value)}
-                disabled={disableOwnerFields}
-              />
-              {errors.owner_employee_id && (
-                <p className="mt-1 text-xs text-red-600">{errors.owner_employee_id}</p>
-              )}
-            </FormField>
-            <FormField label="Reporting Manager">
-              <input
-                className={inputClass}
-                value={form.owner_reporting_manager}
-                onChange={(e) => onChange('owner_reporting_manager', e.target.value)}
-                disabled={disableOwnerFields}
-              />
-            </FormField>
-            <FormField label="Registered With Company On">
-              <input
-                type="date"
-                className={inputClass}
-                value={form.date_of_registration_in_company}
-                onChange={(e) => onChange('date_of_registration_in_company', e.target.value)}
-              />
-            </FormField>
+            {!hideEmployeeFields && (
+              <>
+                <FormField label="Department">
+                  <input
+                    className={inputClass}
+                    value={form.owner_department}
+                    onChange={(e) => onChange('owner_department', e.target.value)}
+                    disabled={disableOwnerFields}
+                  />
+                </FormField>
+                <FormField label="Employee ID">
+                  <input
+                    className={inputClass}
+                    value={form.owner_employee_id}
+                    onChange={(e) => handleEmployeeIdChange(e.target.value)}
+                    maxLength={10}
+                    disabled={disableOwnerFields}
+                  />
+                  {ownerEmployeeIdError && (
+                    <p className="mt-1 text-xs text-red-600">{ownerEmployeeIdError}</p>
+                  )}
+                </FormField>
+                <FormField label="Reporting Manager">
+                  <input
+                    className={inputClass}
+                    value={form.owner_reporting_manager}
+                    onChange={(e) => onChange('owner_reporting_manager', e.target.value)}
+                    disabled={disableOwnerFields}
+                  />
+                </FormField>
+                <FormField label="Registered With Company On">
+                  <input
+                    type="date"
+                    className={inputClass}
+                    value={form.date_of_registration_in_company}
+                    min={todayDateInputValue()}
+                    onChange={(e) => onChange('date_of_registration_in_company', e.target.value)}
+                  />
+                </FormField>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -240,6 +277,7 @@ export default function VehicleProfileFields({
               type="date"
               className={inputClass}
               value={form.license_validity}
+              min={todayDateInputValue()}
               onChange={(e) => onChange('license_validity', e.target.value)}
             />
             {errors.license_validity && (
@@ -251,6 +289,7 @@ export default function VehicleProfileFields({
               type="date"
               className={inputClass}
               value={form.insurance_validity}
+              min={todayDateInputValue()}
               onChange={(e) => onChange('insurance_validity', e.target.value)}
             />
             {errors.insurance_validity && (
@@ -262,6 +301,7 @@ export default function VehicleProfileFields({
               type="date"
               className={inputClass}
               value={form.puc_validity}
+              min={todayDateInputValue()}
               onChange={(e) => onChange('puc_validity', e.target.value)}
             />
             {errors.puc_validity && <p className="mt-1 text-xs text-red-600">{errors.puc_validity}</p>}

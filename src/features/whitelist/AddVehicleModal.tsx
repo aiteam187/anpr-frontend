@@ -6,7 +6,7 @@ import VehicleProfileFields, {
   emptyVehicleProfileForm,
   validateVehicleProfile,
 } from '../shared/VehicleProfileFields';
-import { validatePlateNumber } from '../../utils/validation';
+import { sanitizePlateInput, validatePlateNumber } from '../../utils/validation';
 import type { AuthorizedVehicleCreatePayload } from '../../types/authorizedVehicle';
 import type { Employee } from '../../types/masters';
 
@@ -43,6 +43,18 @@ export default function AddVehicleModal({
   const [formError, setFormError] = useState<string | null>(null);
 
   const update = (key: keyof typeof form, value: string) => setForm((prev) => ({ ...prev, [key]: value }));
+
+  const handlePlateChange = (value: string) => {
+    const sanitized = sanitizePlateInput(value.toUpperCase());
+    setPlateNumber(sanitized);
+    setErrors((prev) => {
+      const next = { ...prev };
+      const err = validatePlateNumber(sanitized);
+      if (err) next.plate_number = err;
+      else delete next.plate_number;
+      return next;
+    });
+  };
 
   const validate = () => {
     const next: Record<string, string> = { ...validateVehicleProfile(form) };
@@ -85,8 +97,9 @@ export default function AddVehicleModal({
             <input
               className={`${inputClass} font-mono uppercase tracking-wide`}
               value={plateNumber}
-              onChange={(e) => setPlateNumber(e.target.value)}
+              onChange={(e) => handlePlateChange(e.target.value)}
               placeholder="e.g. DL01AB1234"
+              maxLength={15}
               autoFocus
             />
           </FormField>

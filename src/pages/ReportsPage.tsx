@@ -32,7 +32,7 @@ function buildActiveVehiclesColumns(
     { header: 'Number Plate', render: (v) => <span className="font-mono font-semibold text-slate-900">{v.plate_number}</span> },
     { header: 'Employee Name', render: (v) => employeeNameByPlate.get(v.plate_number) ?? '—' },
     { header: 'Entry Time', render: (v) => formatDateTime(v.entry_time) },
-    { header: 'Elapsed', render: (v) => formatElapsed(v.elapsed_seconds) },
+    { header: 'Dwell Time', render: (v) => formatElapsed(v.elapsed_seconds) },
     {
       header: 'Overstayed',
       render: (v) =>

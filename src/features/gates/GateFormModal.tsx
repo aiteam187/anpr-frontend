@@ -135,6 +135,8 @@ export default function GateFormModal({ onClose, onSubmit }: GateFormModalProps)
             <FormField label="RTSP Port">
               <input
                 type="number"
+                min={1}
+                max={65535}
                 className={inputClass}
                 value={form.camera_rtsp_port ?? ''}
                 onChange={(e) => update('camera_rtsp_port', e.target.value ? Number(e.target.value) : null)}
@@ -331,6 +333,8 @@ export function EditGateModal({ gate, onClose, onSubmit }: EditGateModalProps) {
             <FormField label="RTSP Port">
               <input
                 type="number"
+                min={1}
+                max={65535}
                 className={inputClass}
                 value={rtspPort}
                 onChange={(e) => setRtspPort(e.target.value ? Number(e.target.value) : 554)}

@@ -56,7 +56,6 @@ interface GateMonitorCardProps {
   history: HistoryRecord[];
   unauthorizedAttempts: UnauthorizedAttempt[];
   authorizedVehicles: AuthorizedVehicle[];
-  todayCount: number;
 }
 
 export default function GateMonitorCard({
@@ -66,7 +65,6 @@ export default function GateMonitorCard({
   history,
   unauthorizedAttempts,
   authorizedVehicles,
-  todayCount,
 }: GateMonitorCardProps) {
   const [viewing, setViewing] = useState<ActivityRecord | null>(null);
   const [zoomedImage, setZoomedImage] = useState<{ src: string; alt: string } | null>(null);
@@ -98,28 +96,22 @@ export default function GateMonitorCard({
     .filter((r) => r.eventType !== 'unauthorized' || isBlacklisted(r) || isDeactivated(r))
     .slice(0, RECENT_COUNT);
 
-  const overstayedVehicle = activeVehicles.find((v) => v.cam_id === gate.camera_id && v.is_overstayed);
   const latest = records[0];
 
-  // Pop up once per new event/overstay — not on every poll refresh, which
-  // would otherwise re-show the same notice repeatedly since `latest` and
-  // `overstayedVehicle` stay truthy across many re-renders.
+  // Pop up once per new event — not on every poll refresh, which would
+  // otherwise re-show the same notice repeatedly since `latest` stays
+  // truthy across many re-renders. Overstay is deliberately not shown here
+  // — it has its own dedicated alert surface (the bell/alarms panel) and
+  // doesn't need to also compete for space on the live gate card.
   useEffect(() => {
-    const next: Omit<Popup, 'expiresAt'> | null = overstayedVehicle
-      ? {
-          key: `overstay-${overstayedVehicle.plate_number}`,
-          plateNumber: overstayedVehicle.plate_number,
-          message: 'Vehicle Overstayed',
-          style: 'border-amber-200 bg-amber-50 text-amber-700',
-        }
-      : latest
-        ? { key: latest.key, plateNumber: latest.plateNumber, ...popupForRecord(latest) }
-        : null;
+    const next: Omit<Popup, 'expiresAt'> | null = latest
+      ? { key: latest.key, plateNumber: latest.plateNumber, ...popupForRecord(latest) }
+      : null;
 
     if (!next || next.key === lastPopupKeyRef.current) return;
     lastPopupKeyRef.current = next.key;
     setPopup({ ...next, expiresAt: Date.now() + POPUP_DURATION_MS });
-  }, [overstayedVehicle?.plate_number, latest?.key]);
+  }, [latest?.key]);
 
   // Dismissal is a separate effect, tied only to the current popup's own
   // key — so it can't be disrupted by the detection effect above re-running
@@ -211,9 +203,6 @@ export default function GateMonitorCard({
             }`}
           >
             {gate.direction}
-          </span>
-          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
-            {todayCount} today
           </span>
         </div>
         <div className="flex items-center gap-3">

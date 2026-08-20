@@ -23,6 +23,7 @@ import {
   updateVehicleDetails,
 } from '../services/authorizedVehiclesService';
 import { fuelTypesApi, vehicleTypesApi } from '../services/mastersService';
+import { localDateTimeToUtcIso } from '../utils/validation';
 import type { AuthorizedVehicle } from '../types/authorizedVehicle';
 
 export default function VisitorsPage() {
@@ -95,8 +96,8 @@ export default function VisitorsPage() {
       list_type: 'visitor',
       visit_purpose: pendingAdd.visitPurpose,
       visiting_whom: pendingAdd.visitingWhom,
-      valid_from: pendingAdd.validFrom,
-      valid_until: pendingAdd.validUntil,
+      valid_from: localDateTimeToUtcIso(pendingAdd.validFrom),
+      valid_until: localDateTimeToUtcIso(pendingAdd.validUntil),
     });
     await updateVehicleDetails(pendingAdd.plateNumber, pendingAdd.details);
     setPendingAdd(null);
@@ -110,8 +111,8 @@ export default function VisitorsPage() {
       list_type: 'visitor',
       visit_purpose: input.visitPurpose,
       visiting_whom: input.visitingWhom,
-      valid_from: input.validFrom,
-      valid_until: input.validUntil,
+      valid_from: localDateTimeToUtcIso(input.validFrom),
+      valid_until: localDateTimeToUtcIso(input.validUntil),
     });
     await updateVehicleDetails(visitor.plate_number, input.details);
     setPendingEdit(null);
@@ -124,8 +125,8 @@ export default function VisitorsPage() {
       list_type: 'visitor',
       visit_purpose: extendTarget.visit_purpose,
       visiting_whom: extendTarget.visiting_whom,
-      valid_from: input.validFrom,
-      valid_until: input.validUntil,
+      valid_from: localDateTimeToUtcIso(input.validFrom),
+      valid_until: localDateTimeToUtcIso(input.validUntil),
     });
     setExtendTarget(null);
     await refresh();

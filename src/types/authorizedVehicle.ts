@@ -80,9 +80,14 @@ export interface ListTypeSwitchPayload {
   valid_until?: string | null;
 }
 
+/** Shared shape for both /authorized-vehicles/bulk-upload and /admin/employees/bulk-upload —
+ * the extra `unmatched_*` counters are specific to whichever endpoint responded. */
 export interface BulkUploadResult {
   status: string;
   added: number;
   updated: number;
   skipped: number;
+  unmatched_employee_code?: number;
+  unmatched_department?: number;
+  unmatched_reporting_manager?: number;
 }

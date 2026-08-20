@@ -10,19 +10,35 @@ import { SkeletonList, SkeletonStatTiles } from '../components/ui/Skeleton';
 import ReportTable, { type ReportColumn } from '../features/reports/ReportTable';
 import {
   alarmExtraFields,
+  alarmListType,
+  alarmOverstayedBySeconds,
+  alarmOwnerName,
   alarmSeverity,
   alarmTarget,
   alarmTimestamp,
   alarmTitle,
 } from '../features/alarms/readAlarmField';
+import { LIST_TYPE_LABELS, LIST_TYPE_STYLES } from '../features/vehicleSearch/listTypeBadge';
+import type { ListType } from '../types/authorizedVehicle';
+import type { AlarmItem } from '../types/alarms';
 import { getAlarmHistory, getAlarms } from '../services/alarmsService';
 import { downloadExport, type ExportFormat } from '../services/exportsService';
 import { useInterval } from '../hooks/useInterval';
-import { formatDateTime, formatRelativeTime } from '../utils/format';
+import { formatDateTime, formatElapsed, formatRelativeTime } from '../utils/format';
 import { computeRangeMs, RANGE_PRESETS, type RangeSelection } from '../utils/reportDateRange';
 import type { AlarmLogEntry, AlarmsResponse } from '../types/alarms';
 
 const POLL_MS = 3000;
+
+/** Overstay alarms get a short, fixed title — the plate/owner/duration are
+ * already broken out into their own line below, so repeating them inside
+ * a long "PLATE has overstayed (over the limit by Xh Ym)" sentence just
+ * made the card look busier without adding information. Every other
+ * alarm type (camera silent, DB down, relay fault, etc.) keeps its
+ * existing message as-is. */
+function alarmDisplayTitle(alarm: AlarmItem): string {
+  return alarm.type === 'overstay' ? 'Vehicle Overstayed' : alarmTitle(alarm);
+}
 
 const HISTORY_COLUMNS: ReportColumn<AlarmLogEntry>[] = [
   {
@@ -236,7 +252,10 @@ export default function AlarmsPage() {
                     const severity = alarmSeverity(alarm);
                     const target = alarmTarget(alarm);
                     const timestamp = alarmTimestamp(alarm);
-                    const extras = alarmExtraFields(alarm);
+                    const extras = alarm.type === 'overstay' ? [] : alarmExtraFields(alarm);
+                    const ownerName = alarmOwnerName(alarm);
+                    const listType = alarmListType(alarm) as ListType | null;
+                    const overstayedSeconds = alarmOverstayedBySeconds(alarm);
                     return (
                       <li
                         key={idx}
@@ -263,10 +282,27 @@ export default function AlarmsPage() {
                               {severity}
                             </span>
                             <p className="text-sm font-medium text-slate-900">
-                              {alarmTitle(alarm)}
+                              {alarmDisplayTitle(alarm)}
                             </p>
                           </div>
-                          {target && <p className="mt-1 text-xs text-slate-500">{target}</p>}
+                          {(target || ownerName || listType || overstayedSeconds !== null) && (
+                            <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
+                              {target && <span className="font-mono font-medium text-slate-700">{target}</span>}
+                              {ownerName && <span>{ownerName}</span>}
+                              {listType && LIST_TYPE_LABELS[listType] && (
+                                <span
+                                  className={`rounded-full px-2 py-0.5 text-xs font-medium ${LIST_TYPE_STYLES[listType]}`}
+                                >
+                                  {LIST_TYPE_LABELS[listType]}
+                                </span>
+                              )}
+                              {overstayedSeconds !== null && (
+                                <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+                                  Over by {formatElapsed(overstayedSeconds)}
+                                </span>
+                              )}
+                            </div>
+                          )}
                           {extras.length > 0 && (
                             <p className="mt-1 text-xs text-slate-400">
                               {extras.map(([k, v]) => `${k}: ${String(v)}`).join(' · ')}

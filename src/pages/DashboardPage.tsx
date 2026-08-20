@@ -101,7 +101,7 @@ export default function DashboardPage() {
               icon={LogOut}
               label="Exit Vehicles"
               value={exitsInRange}
-              sublabel={range.label}
+              sublabel="Exited"
               to="/monitoring/tracking"
             />
             <StatTile
@@ -152,7 +152,12 @@ export default function DashboardPage() {
               history={data.history}
               range={range}
             />
-            <GateStatusPanel gates={data.gates} health={data.health} />
+            <AlertsPanel
+              unauthorizedAttempts={data.unauthorizedAttempts}
+              activeVehicles={data.activeVehicles}
+              health={data.health}
+              gates={data.gates}
+            />
           </FadeIn>
 
           <SectionLabel>Live Operations</SectionLabel>
@@ -162,7 +167,7 @@ export default function DashboardPage() {
               history={data.history}
               gates={data.gates}
             />
-            <QuickLinksPanel />
+            <GateStatusPanel gates={data.gates} health={data.health} />
           </FadeIn>
 
           <SectionLabel>Registered Fleet</SectionLabel>
@@ -193,12 +198,7 @@ export default function DashboardPage() {
 
           <SectionLabel>Alerts & Infrastructure</SectionLabel>
           <FadeIn delay={480} className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <AlertsPanel
-              unauthorizedAttempts={data.unauthorizedAttempts}
-              activeVehicles={data.activeVehicles}
-              health={data.health}
-              gates={data.gates}
-            />
+            <QuickLinksPanel />
             <SystemHealthPanel health={data.health} gates={data.gates} />
           </FadeIn>
         </>

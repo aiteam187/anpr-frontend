@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronDown, ClipboardList, Download, Filter, Search } from 'lucide-react';
+import { useInterval } from '../hooks/useInterval';
 import PageHeader from '../components/ui/PageHeader';
 import Panel from '../components/ui/Panel';
 import FormField, { inputClass } from '../components/ui/FormField';
@@ -21,6 +22,7 @@ const FORMAT_OPTIONS: { value: ExportFormat; label: string }[] = [
 ];
 
 const PAGE_SIZE = 20;
+const POLL_MS = 5000;
 
 const ZONE_KEYS = ['x0', 'y0', 'x1', 'y1', 'x2', 'y2', 'x3', 'y3'] as const;
 
@@ -97,31 +99,43 @@ export default function ActivityLogPage() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [showExportMenu]);
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await getActivityLog({
-        category: category || undefined,
-        start_date: startDate ? `${startDate}T00:00:00` : undefined,
-        end_date: endDate ? `${endDate}T23:59:59` : undefined,
-        target: target.trim() || undefined,
-        limit: PAGE_SIZE,
-        offset,
-      });
-      setItems(res.items);
-      setCategories(res.categories);
-      setTotalCount(res.total_count);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load activity log');
-    } finally {
-      setLoading(false);
-    }
-  }, [category, startDate, endDate, target, offset]);
+  // `silent` skips the loading-skeleton flash for background polls — only a
+  // real user-triggered refresh (filter change, page load) should show it.
+  const refresh = useCallback(
+    async (silent = false) => {
+      if (!silent) setLoading(true);
+      try {
+        const res = await getActivityLog({
+          category: category || undefined,
+          start_date: startDate ? `${startDate}T00:00:00` : undefined,
+          end_date: endDate ? `${endDate}T23:59:59` : undefined,
+          target: target.trim() || undefined,
+          limit: PAGE_SIZE,
+          offset,
+        });
+        setItems(res.items);
+        setCategories(res.categories);
+        setTotalCount(res.total_count);
+        setError(null);
+      } catch (err) {
+        if (!silent) setError(err instanceof Error ? err.message : 'Failed to load activity log');
+      } finally {
+        if (!silent) setLoading(false);
+      }
+    },
+    [category, startDate, endDate, target, offset],
+  );
 
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  // Auto-refresh so new events (gate opens, camera signals, edits) show up
+  // on their own without hitting Refresh — only while viewing the first
+  // page, so polling doesn't yank someone back to page 1 mid-browse.
+  useInterval(() => {
+    if (offset === 0) refresh(true);
+  }, POLL_MS);
 
   const handleFilterChange = () => setOffset(0);
 

@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import Modal from '../../components/ui/Modal';
 import FormField, { inputClass } from '../../components/ui/FormField';
 import Select from '../../components/ui/Select';
-import { validatePassword, validatePhone, validateRequired, validateUsername } from '../../utils/validation';
+import { sanitizePhoneInput, validatePassword, validatePhone, validateRequired, validateUsername } from '../../utils/validation';
 import { getRoles } from '../../services/rolesService';
 import { usePermissions } from '../../context/PermissionsContext';
 import type { Role } from '../../types/roles';
@@ -62,6 +62,35 @@ export default function UserFormModal({ onClose, onSubmit }: UserFormModalProps)
     return Object.keys(next).length === 0;
   };
 
+  const setFieldError = (field: string, err: string | null) =>
+    setErrors((prev) => {
+      const next = { ...prev };
+      if (err) next[field] = err;
+      else delete next[field];
+      return next;
+    });
+
+  const handleUsernameChange = (value: string) => {
+    setUsername(value);
+    setFieldError('username', validateUsername(value));
+  };
+
+  const handlePasswordChange = (value: string) => {
+    setPassword(value);
+    setFieldError('password', validatePassword(value, true));
+  };
+
+  const handleFullNameChange = (value: string) => {
+    setFullName(value);
+    setFieldError('fullName', validateRequired(value, 'Full name'));
+  };
+
+  const handlePhoneChange = (value: string) => {
+    const sanitized = sanitizePhoneInput(value);
+    setPhoneNumber(sanitized);
+    setFieldError('phoneNumber', validatePhone(sanitized));
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
@@ -88,13 +117,13 @@ export default function UserFormModal({ onClose, onSubmit }: UserFormModalProps)
           <input
             className={inputClass}
             value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            onChange={(e) => handleUsernameChange(e.target.value)}
             autoFocus
           />
           {errors.username && <p className="mt-1 text-xs text-red-600">{errors.username}</p>}
         </FormField>
         <FormField label="Full Name">
-          <input className={inputClass} value={fullName} onChange={(e) => setFullName(e.target.value)} />
+          <input className={inputClass} value={fullName} onChange={(e) => handleFullNameChange(e.target.value)} />
           {errors.fullName && <p className="mt-1 text-xs text-red-600">{errors.fullName}</p>}
         </FormField>
         <FormField label="Password">
@@ -102,7 +131,7 @@ export default function UserFormModal({ onClose, onSubmit }: UserFormModalProps)
             type="password"
             className={inputClass}
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => handlePasswordChange(e.target.value)}
           />
           {errors.password && <p className="mt-1 text-xs text-red-600">{errors.password}</p>}
         </FormField>
@@ -119,8 +148,10 @@ export default function UserFormModal({ onClose, onSubmit }: UserFormModalProps)
           <input
             className={inputClass}
             value={phoneNumber}
-            onChange={(e) => setPhoneNumber(e.target.value)}
-            placeholder="e.g. +919876543210"
+            onChange={(e) => handlePhoneChange(e.target.value)}
+            inputMode="numeric"
+            maxLength={10}
+            placeholder="10-digit mobile number"
           />
           {errors.phoneNumber && <p className="mt-1 text-xs text-red-600">{errors.phoneNumber}</p>}
         </FormField>
@@ -177,6 +208,30 @@ export function EditUserModal({ user, onClose, onSubmit }: EditUserModalProps) {
     return Object.keys(next).length === 0;
   };
 
+  const setFieldError = (field: string, err: string | null) =>
+    setErrors((prev) => {
+      const next = { ...prev };
+      if (err) next[field] = err;
+      else delete next[field];
+      return next;
+    });
+
+  const handleFullNameChange = (value: string) => {
+    setFullName(value);
+    setFieldError('fullName', validateRequired(value, 'Full name'));
+  };
+
+  const handlePhoneChange = (value: string) => {
+    const sanitized = sanitizePhoneInput(value);
+    setPhoneNumber(sanitized);
+    setFieldError('phoneNumber', validatePhone(sanitized));
+  };
+
+  const handlePasswordChange = (value: string) => {
+    setPassword(value);
+    setFieldError('password', value ? validatePassword(value, false) : null);
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
@@ -200,7 +255,7 @@ export function EditUserModal({ user, onClose, onSubmit }: EditUserModalProps) {
     <Modal title={`Edit ${user.username}`} onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-3">
         <FormField label="Full Name">
-          <input className={inputClass} value={fullName} onChange={(e) => setFullName(e.target.value)} />
+          <input className={inputClass} value={fullName} onChange={(e) => handleFullNameChange(e.target.value)} />
           {errors.fullName && <p className="mt-1 text-xs text-red-600">{errors.fullName}</p>}
         </FormField>
         <FormField label="Role">
@@ -222,7 +277,9 @@ export function EditUserModal({ user, onClose, onSubmit }: EditUserModalProps) {
           <input
             className={inputClass}
             value={phoneNumber}
-            onChange={(e) => setPhoneNumber(e.target.value)}
+            onChange={(e) => handlePhoneChange(e.target.value)}
+            inputMode="numeric"
+            maxLength={10}
           />
           {errors.phoneNumber && <p className="mt-1 text-xs text-red-600">{errors.phoneNumber}</p>}
         </FormField>
@@ -231,7 +288,7 @@ export function EditUserModal({ user, onClose, onSubmit }: EditUserModalProps) {
             type="password"
             className={inputClass}
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => handlePasswordChange(e.target.value)}
             placeholder="Leave blank to keep current password"
           />
           {errors.password && <p className="mt-1 text-xs text-red-600">{errors.password}</p>}

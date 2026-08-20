@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiPatch, apiPost } from './api';
+import { apiDelete, apiGet, apiPatch, apiPost, apiUpload } from './api';
 import type {
   Employee,
   EmployeeCreatePayload,
@@ -7,6 +7,7 @@ import type {
   SimpleMasterCreatePayload,
   SimpleMasterUpdatePayload,
 } from '../types/masters';
+import type { BulkUploadResult } from '../types/authorizedVehicle';
 
 function simpleMasterApi(basePath: string) {
   return {
@@ -36,4 +37,10 @@ export function updateEmployee(id: number, payload: EmployeeUpdatePayload) {
 
 export function deleteEmployee(id: number, hard = false) {
   return apiDelete<unknown>(`/admin/employees/${id}${hard ? '?hard=true' : ''}`);
+}
+
+export function bulkUploadEmployees(file: File) {
+  const formData = new FormData();
+  formData.append('file', file);
+  return apiUpload<BulkUploadResult>('/admin/employees/bulk-upload', formData);
 }

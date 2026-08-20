@@ -11,7 +11,7 @@ import Pagination from '../components/ui/Pagination';
 import { usePagination } from '../hooks/usePagination';
 import VehicleDetailsModal from '../features/whitelist/VehicleDetailsModal';
 import AddVehicleModal from '../features/whitelist/AddVehicleModal';
-import BulkUploadModal from '../features/whitelist/BulkUploadModal';
+import BulkUploadModal, { type BulkUploadColumn } from '../components/ui/BulkUploadModal';
 import BlacklistReasonModal from '../features/whitelist/BlacklistReasonModal';
 import VehicleInfoModal from '../features/whitelist/VehicleInfoModal';
 import SimpleMasterPage from '../features/masters/SimpleMasterPage';
@@ -21,7 +21,7 @@ import AddVisitorModal, { type NewVisitorInput } from '../features/visitors/AddV
 import EditVisitorModal, { type VisitorEditInput } from '../features/visitors/EditVisitorModal';
 import { LIST_TYPE_LABELS, LIST_TYPE_STYLES } from '../features/vehicleSearch/listTypeBadge';
 import { formatDateTime } from '../utils/format';
-import { isPastDate } from '../utils/validation';
+import { localDateTimeToUtcIso } from '../utils/validation';
 import {
   activateAuthorizedVehicle,
   addAuthorizedVehicle,
@@ -37,6 +37,19 @@ import type { AuthorizedVehicle, ListType } from '../types/authorizedVehicle';
 import type { Employee } from '../types/masters';
 
 type Tab = 'vehicles' | 'allowlist' | 'blacklist' | 'visitors' | 'vehicle-types' | 'fuel-types';
+
+const VEHICLE_BULK_COLUMNS: BulkUploadColumn[] = [
+  { name: 'plate_number', required: true, example: 'MH12DE1433' },
+  { name: 'list_type', example: 'whitelist' },
+  { name: 'owner_name', example: 'Vikram Singh' },
+  { name: 'owner_phone', example: '9765432109' },
+  { name: 'vehicle_type', example: '4-Wheeler' },
+  { name: 'fuel_type', example: 'Petrol' },
+  { name: 'vehicle_company', example: 'Toyota' },
+  { name: 'vehicle_model', example: 'Innova' },
+  { name: 'employee_code', example: 'EMP105' },
+  { name: 'notes', example: '' },
+];
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'vehicles', label: 'Vehicles' },
@@ -151,27 +164,6 @@ const LIST_TYPE_FILTERS: { value: ListType | ''; label: string }[] = [
   { value: 'whitelist', label: 'Allowlist' },
   { value: 'blacklist', label: 'Blacklist' },
 ];
-
-/** Compact insurance/PUC expiry summary for a table row — mirrors the full breakdown in VehicleInfoModal but condensed to fit one cell. */
-function ComplianceCell({ vehicle: v }: { vehicle: AuthorizedVehicle }) {
-  const insuranceExpired = isPastDate(v.insurance_validity);
-  const pucExpired = isPastDate(v.puc_validity);
-  if (!v.insurance_validity && !v.puc_validity) {
-    return <span className="text-slate-400">—</span>;
-  }
-  return (
-    <div className="space-y-0.5 text-xs">
-      <p className={insuranceExpired ? 'font-medium text-red-600' : 'text-slate-500'}>
-        Ins: {v.insurance_validity ? v.insurance_validity.slice(0, 10) : '—'}
-        {insuranceExpired && ' (expired)'}
-      </p>
-      <p className={pucExpired ? 'font-medium text-red-600' : 'text-slate-500'}>
-        PUC: {v.puc_validity ? v.puc_validity.slice(0, 10) : '—'}
-        {pucExpired && ' (expired)'}
-      </p>
-    </div>
-  );
-}
 
 /** Default overview tab — every non-visitor vehicle (whitelist + blacklist), in one table with a list-type filter. The dedicated Allowlist/Blacklist tabs exist alongside this for one-click access to just those lists. Visitors get their own separate tab (VisitorsTab) instead of being mixed in here — they're time-bound guest access, not permanent fleet records. */
 function VehiclesTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
@@ -389,7 +381,7 @@ function VehiclesTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
                   <th className="pb-2 font-medium">Owner</th>
                   <th className="pb-2 font-medium">Employee ID</th>
                   <th className="pb-2 font-medium">Vehicle Type</th>
-                  <th className="pb-2 font-medium">Compliance</th>
+                  <th className="pb-2 font-medium">Owner Phone</th>
                   <th className="pb-2 font-medium">Status</th>
                   <th className="pb-2 font-medium">Actions</th>
                 </tr>
@@ -424,9 +416,7 @@ function VehiclesTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
                       </div>
                     </td>
                     <td className="py-2.5 text-slate-500">{v.vehicle_type || '—'}</td>
-                    <td className="py-2.5">
-                      <ComplianceCell vehicle={v} />
-                    </td>
+                    <td className="py-2.5 text-slate-500">{v.owner_phone || '—'}</td>
                     <td className="py-2.5">
                       {v.is_active ? (
                         <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
@@ -531,6 +521,9 @@ function VehiclesTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
       )}
       {showBulkModal && (
         <BulkUploadModal
+          title="Bulk Upload Vehicles"
+          columns={VEHICLE_BULK_COLUMNS}
+          templateFilename="vehicles_template.csv"
           onClose={() => {
             setShowBulkModal(false);
             refresh();
@@ -803,7 +796,7 @@ function AllowlistTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
                   <th className="pb-2 font-medium">Owner</th>
                   <th className="pb-2 font-medium">Employee ID</th>
                   <th className="pb-2 font-medium">Vehicle Type</th>
-                  <th className="pb-2 font-medium">Compliance</th>
+                  <th className="pb-2 font-medium">Owner Phone</th>
                   <th className="pb-2 font-medium">Status</th>
                   <th className="pb-2 font-medium">Actions</th>
                 </tr>
@@ -829,9 +822,7 @@ function AllowlistTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
                       </div>
                     </td>
                     <td className="py-2.5 text-slate-500">{v.vehicle_type || '—'}</td>
-                    <td className="py-2.5">
-                      <ComplianceCell vehicle={v} />
-                    </td>
+                    <td className="py-2.5 text-slate-500">{v.owner_phone || '—'}</td>
                     <td className="py-2.5">
                       {v.is_active ? (
                         <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
@@ -922,6 +913,9 @@ function AllowlistTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
       )}
       {showBulkModal && (
         <BulkUploadModal
+          title="Bulk Upload Vehicles"
+          columns={VEHICLE_BULK_COLUMNS}
+          templateFilename="vehicles_template.csv"
           onClose={() => {
             setShowBulkModal(false);
             refresh();
@@ -1096,7 +1090,7 @@ function BlacklistTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
                   <th className="pb-2 font-medium">Number Plate</th>
                   <th className="pb-2 font-medium">Owner</th>
                   <th className="pb-2 font-medium">Reason</th>
-                  <th className="pb-2 font-medium">Compliance</th>
+                  <th className="pb-2 font-medium">Owner Phone</th>
                   <th className="pb-2 font-medium">Blacklisted</th>
                   <th className="pb-2 font-medium">Actions</th>
                 </tr>
@@ -1116,9 +1110,7 @@ function BlacklistTab({ employees, vehicleTypes, fuelTypes }: TabProps) {
                     <td className="py-2.5 text-slate-600">
                       {v.blacklist_reason || <span className="text-slate-400">No reason recorded</span>}
                     </td>
-                    <td className="py-2.5">
-                      <ComplianceCell vehicle={v} />
-                    </td>
+                    <td className="py-2.5 text-slate-500">{v.owner_phone || '—'}</td>
                     <td className="py-2.5 text-slate-500">{formatDateTime(v.deactivated_at ?? v.added_at)}</td>
                     <td className="py-2.5">
                       <div className="flex items-center gap-1.5">
@@ -1279,8 +1271,8 @@ function VisitorsTab({ vehicleTypes, fuelTypes }: { vehicleTypes: string[]; fuel
       list_type: 'visitor',
       visit_purpose: pendingAdd.visitPurpose,
       visiting_whom: pendingAdd.visitingWhom,
-      valid_from: pendingAdd.validFrom,
-      valid_until: pendingAdd.validUntil,
+      valid_from: localDateTimeToUtcIso(pendingAdd.validFrom),
+      valid_until: localDateTimeToUtcIso(pendingAdd.validUntil),
     });
     await updateVehicleDetails(pendingAdd.plateNumber, pendingAdd.details);
     setPendingAdd(null);
@@ -1294,8 +1286,8 @@ function VisitorsTab({ vehicleTypes, fuelTypes }: { vehicleTypes: string[]; fuel
       list_type: 'visitor',
       visit_purpose: input.visitPurpose,
       visiting_whom: input.visitingWhom,
-      valid_from: input.validFrom,
-      valid_until: input.validUntil,
+      valid_from: localDateTimeToUtcIso(input.validFrom),
+      valid_until: localDateTimeToUtcIso(input.validUntil),
     });
     await updateVehicleDetails(visitor.plate_number, input.details);
     setPendingEdit(null);
@@ -1308,8 +1300,8 @@ function VisitorsTab({ vehicleTypes, fuelTypes }: { vehicleTypes: string[]; fuel
       list_type: 'visitor',
       visit_purpose: extendTarget.visit_purpose,
       visiting_whom: extendTarget.visiting_whom,
-      valid_from: input.validFrom,
-      valid_until: input.validUntil,
+      valid_from: localDateTimeToUtcIso(input.validFrom),
+      valid_until: localDateTimeToUtcIso(input.validUntil),
     });
     setExtendTarget(null);
     await refresh();

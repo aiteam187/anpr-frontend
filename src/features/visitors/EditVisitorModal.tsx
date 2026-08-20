@@ -38,6 +38,13 @@ function toDateInputValue(value: string | null): string {
   return value.slice(0, 10);
 }
 
+function nowDateTime(): string {
+  const d = new Date();
+  d.setSeconds(0, 0);
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0, 16);
+}
+
 function toDetailsPayload(form: VehicleProfileForm, notes: string): AuthorizedVehicleDetailsPayload {
   return {
     notes: notes.trim() || null,
@@ -65,6 +72,7 @@ export default function EditVisitorModal({
   onClose,
   onSubmit,
 }: EditVisitorModalProps) {
+  const [minDateTime] = useState(nowDateTime());
   const [visitPurpose, setVisitPurpose] = useState(visitor.visit_purpose ?? '');
   const [visitingWhom, setVisitingWhom] = useState(visitor.visiting_whom ?? '');
   const [validFrom, setValidFrom] = useState(toLocalInputValue(visitor.valid_from));
@@ -94,8 +102,28 @@ export default function EditVisitorModal({
   const updateProfile = (key: keyof VehicleProfileForm, value: string) =>
     setProfile((prev) => ({ ...prev, [key]: value }));
 
+  const setFieldError = (field: string, err: string | null) =>
+    setErrors((prev) => {
+      const next = { ...prev };
+      if (err) next[field] = err;
+      else delete next[field];
+      return next;
+    });
+
+  const handlePurposeChange = (value: string) => {
+    setVisitPurpose(value);
+    setFieldError('visitPurpose', validateRequired(value, 'Purpose of visit'));
+  };
+
+  const handleWhomChange = (value: string) => {
+    setVisitingWhom(value);
+    setFieldError('visitingWhom', validateRequired(value, 'Visiting whom'));
+  };
+
   const validate = () => {
-    const next: Record<string, string> = { ...validateVehicleProfile(profile, { requireOwner: true }) };
+    const next: Record<string, string> = {
+      ...validateVehicleProfile(profile, { requireOwner: true, hideEmployeeFields: true }),
+    };
     const purposeErr = validateRequired(visitPurpose, 'Purpose of visit');
     const whomErr = validateRequired(visitingWhom, 'Visiting whom');
     const rangeErr = validateDateRange(validFrom, validUntil);
@@ -137,7 +165,7 @@ export default function EditVisitorModal({
               <input
                 className={inputClass}
                 value={visitPurpose}
-                onChange={(e) => setVisitPurpose(e.target.value)}
+                onChange={(e) => handlePurposeChange(e.target.value)}
               />
               {errors.visitPurpose && <p className="mt-1 text-xs text-red-600">{errors.visitPurpose}</p>}
             </FormField>
@@ -145,7 +173,7 @@ export default function EditVisitorModal({
               <input
                 className={inputClass}
                 value={visitingWhom}
-                onChange={(e) => setVisitingWhom(e.target.value)}
+                onChange={(e) => handleWhomChange(e.target.value)}
               />
               {errors.visitingWhom && <p className="mt-1 text-xs text-red-600">{errors.visitingWhom}</p>}
             </FormField>
@@ -156,7 +184,11 @@ export default function EditVisitorModal({
                 type="datetime-local"
                 className={inputClass}
                 value={validFrom}
-                onChange={(e) => setValidFrom(e.target.value)}
+                min={minDateTime}
+                onChange={(e) => {
+                  setValidFrom(e.target.value);
+                  setFieldError('range', validateDateRange(e.target.value, validUntil));
+                }}
               />
             </FormField>
             <FormField label="Valid Until">
@@ -164,7 +196,11 @@ export default function EditVisitorModal({
                 type="datetime-local"
                 className={inputClass}
                 value={validUntil}
-                onChange={(e) => setValidUntil(e.target.value)}
+                min={minDateTime}
+                onChange={(e) => {
+                  setValidUntil(e.target.value);
+                  setFieldError('range', validateDateRange(validFrom, e.target.value));
+                }}
               />
             </FormField>
           </div>
@@ -178,6 +214,7 @@ export default function EditVisitorModal({
           ownerLabel="Visitor Name"
           ownerSectionLabel="Visitor"
           requireOwner
+          hideEmployeeFields
           vehicleTypeOptions={vehicleTypes}
           fuelTypeOptions={fuelTypes}
         />

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Search, Trash2, UploadCloud } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import Panel from '../components/ui/Panel';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
@@ -8,10 +8,12 @@ import { inputClass } from '../components/ui/FormField';
 import Select from '../components/ui/Select';
 import ExportControls from '../components/ui/ExportControls';
 import Pagination from '../components/ui/Pagination';
+import BulkUploadModal, { type BulkUploadColumn } from '../components/ui/BulkUploadModal';
 import { usePagination } from '../hooks/usePagination';
 import SimpleMasterPage from '../features/masters/SimpleMasterPage';
 import EmployeeFormModal from '../features/masters/EmployeeFormModal';
 import {
+  bulkUploadEmployees,
   createEmployee,
   deleteEmployee,
   departmentsApi,
@@ -19,7 +21,18 @@ import {
   reportingManagersApi,
   updateEmployee,
 } from '../services/mastersService';
+import { getAuthorizedVehicles } from '../services/authorizedVehiclesService';
 import type { Employee, EmployeeCreatePayload, EmployeeUpdatePayload, SimpleMaster } from '../types/masters';
+import type { AuthorizedVehicle } from '../types/authorizedVehicle';
+
+const EMPLOYEE_BULK_COLUMNS: BulkUploadColumn[] = [
+  { name: 'employee_code', required: true, example: 'EMP107' },
+  { name: 'name', required: true, example: 'Ananya Rao' },
+  { name: 'phone', example: '9812309876' },
+  { name: 'email', example: 'ananya.rao@example.com' },
+  { name: 'department', example: 'AI' },
+  { name: 'reporting_manager', example: 'RAMESH PATIL' },
+];
 
 type Tab = 'employees' | 'reporting-managers' | 'departments';
 
@@ -81,9 +94,11 @@ function EmployeesTab() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [departments, setDepartments] = useState<SimpleMaster[]>([]);
   const [reportingManagers, setReportingManagers] = useState<SimpleMaster[]>([]);
+  const [vehicles, setVehicles] = useState<AuthorizedVehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showBulkModal, setShowBulkModal] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null);
   const [pendingCreate, setPendingCreate] = useState<EmployeeCreatePayload | null>(null);
@@ -100,14 +115,16 @@ function EmployeesTab() {
 
   const refresh = useCallback(async () => {
     try {
-      const [employeesRes, departmentsRes, managersRes] = await Promise.all([
+      const [employeesRes, departmentsRes, managersRes, vehiclesRes] = await Promise.all([
         getEmployees(),
         departmentsApi.list(),
         reportingManagersApi.list(),
+        getAuthorizedVehicles(),
       ]);
       setEmployees(employeesRes);
       setDepartments(departmentsRes);
       setReportingManagers(managersRes);
+      setVehicles(vehiclesRes);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load employees');
@@ -165,6 +182,20 @@ function EmployeesTab() {
     await refresh();
   };
 
+  // An employee can have more than one vehicle linked, so this joins all of
+  // theirs into one cell (e.g. "MH12DE1433, MH12AB1234") rather than only
+  // ever showing the first.
+  const platesByEmployee = useMemo(() => {
+    const map = new Map<number, string[]>();
+    for (const v of vehicles) {
+      if (v.employee_id == null) continue;
+      const list = map.get(v.employee_id) ?? [];
+      list.push(v.plate_number);
+      map.set(v.employee_id, list);
+    }
+    return map;
+  }, [vehicles]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toUpperCase();
     return employees.filter((e) => {
@@ -189,7 +220,15 @@ function EmployeesTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        <button
+          type="button"
+          onClick={() => setShowBulkModal(true)}
+          className="flex items-center gap-1.5 rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
+        >
+          <UploadCloud className="h-4 w-4" />
+          Bulk Upload
+        </button>
         <button
           type="button"
           onClick={() => setShowAddModal(true)}
@@ -261,7 +300,7 @@ function EmployeesTab() {
                   <th className="pb-2 font-medium">Name</th>
                   <th className="pb-2 font-medium">Department</th>
                   <th className="pb-2 font-medium">Reporting Manager</th>
-                  <th className="pb-2 font-medium">Registered On</th>
+                  <th className="pb-2 font-medium">Vehicle Number</th>
                   <th className="pb-2 font-medium">Status</th>
                   <th className="pb-2 font-medium">Actions</th>
                 </tr>
@@ -280,8 +319,8 @@ function EmployeesTab() {
                     <td className="py-2.5 text-slate-700">{employee.name}</td>
                     <td className="py-2.5 text-slate-500">{employee.department_name ?? '—'}</td>
                     <td className="py-2.5 text-slate-500">{employee.reporting_manager_name ?? '—'}</td>
-                    <td className="py-2.5 text-slate-500">
-                      {employee.date_of_registration_in_company?.slice(0, 10) ?? '—'}
+                    <td className="py-2.5 font-mono text-slate-500">
+                      {platesByEmployee.get(employee.id)?.join(', ') ?? '—'}
                     </td>
                     <td className="py-2.5">
                       {employee.enabled ? (
@@ -358,6 +397,18 @@ function EmployeesTab() {
           reportingManagers={reportingManagers}
           onClose={() => setEditingEmployee(null)}
           onSubmit={handleUpdate}
+        />
+      )}
+      {showBulkModal && (
+        <BulkUploadModal
+          title="Bulk Upload Employees"
+          columns={EMPLOYEE_BULK_COLUMNS}
+          templateFilename="employees_template.csv"
+          onClose={() => {
+            setShowBulkModal(false);
+            refresh();
+          }}
+          onUpload={bulkUploadEmployees}
         />
       )}
       {pendingCreate && (

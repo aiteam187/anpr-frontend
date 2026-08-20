@@ -4,8 +4,6 @@ import StatTile from '../features/dashboard/StatTile';
 import GateMonitorCard from '../features/liveMonitoring/GateMonitorCard';
 import LiveMonitoringSkeleton from '../features/liveMonitoring/LiveMonitoringSkeleton';
 import { useDashboardData } from '../features/dashboard/useDashboardData';
-import type { GateConfig } from '../types/gate';
-import type { ActiveVehicle, HistoryRecord } from '../types/detection';
 
 function isToday(iso: string | null | undefined): boolean {
   if (!iso) return false;
@@ -16,16 +14,6 @@ function isToday(iso: string | null | undefined): boolean {
     d.getMonth() === now.getMonth() &&
     d.getDate() === now.getDate()
   );
-}
-
-function countToday(gate: GateConfig, activeVehicles: ActiveVehicle[], history: HistoryRecord[]) {
-  if (gate.direction === 'entry') {
-    return (
-      activeVehicles.filter((v) => v.cam_id === gate.camera_id && isToday(v.entry_time)).length +
-      history.filter((h) => h.entry_cam_id === gate.camera_id && isToday(h.entry_time)).length
-    );
-  }
-  return history.filter((h) => h.exit_cam_id === gate.camera_id && isToday(h.exit_time)).length;
 }
 
 export default function MonitoringLivePage() {
@@ -77,7 +65,6 @@ export default function MonitoringLivePage() {
                 history={data.history}
                 unauthorizedAttempts={data.unauthorizedAttempts}
                 authorizedVehicles={data.authorizedVehicles}
-                todayCount={countToday(gate, data.activeVehicles, data.history)}
               />
             ))}
           </div>

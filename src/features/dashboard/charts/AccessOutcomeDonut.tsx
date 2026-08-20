@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import Panel from '../../../components/ui/Panel';
 import ChartTooltip from './ChartTooltip';
@@ -27,6 +28,15 @@ export default function AccessOutcomeDonut({
   const total = data.reduce((sum, d) => sum + d.value, 0);
   const nonZero = data.filter((d) => d.value > 0);
 
+  // The dashboard polls every 1.5s, and recharts' Pie replays its full
+  // shrink-to-zero-and-regrow entrance animation on every data change by
+  // default — at that refresh rate it reads as a constant blink rather
+  // than a chart update. Play it once (the first time there's data to
+  // show), then update in place on every later poll.
+  const hasAnimatedRef = useRef(false);
+  const shouldAnimate = !hasAnimatedRef.current;
+  if (total > 0) hasAnimatedRef.current = true;
+
   return (
     <Panel title="Access Outcomes">
       {total === 0 ? (
@@ -55,6 +65,7 @@ export default function AccessOutcomeDonut({
                   label={({ name, value }) => `${name}: ${value}`}
                   labelLine={{ stroke: '#cbd5e1' }}
                   style={{ filter: 'url(#donutGlow)' }}
+                  isAnimationActive={shouldAnimate}
                   animationDuration={800}
                   animationEasing="ease-out"
                 >

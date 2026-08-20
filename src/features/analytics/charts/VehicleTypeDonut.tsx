@@ -100,11 +100,6 @@ export default function VehicleTypeDonut() {
                   style={{ filter: 'url(#donutAnalyticsGlow)' }}
                   animationDuration={900}
                   animationEasing="ease-out"
-                  label={(props: unknown) => {
-                    const slice = props as VehicleTypeCount;
-                    return `${capitalize(slice.vehicle_type)}: ${slice.count}`;
-                  }}
-                  labelLine={{ stroke: '#cbd5e1' }}
                 >
                   {slices.map((slice, i) => (
                     <Cell key={slice.vehicle_type} fill={PALETTE[i % PALETTE.length]} />

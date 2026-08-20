@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import Modal from '../../components/ui/Modal';
 import FormField, { inputClass } from '../../components/ui/FormField';
 import Select from '../../components/ui/Select';
-import { validateNotPastDate } from '../../utils/validation';
+import { sanitizeEmployeeIdInput, sanitizePhoneInput, todayDateInputValue, validateEmail, validateEmployeeId, validateNotPastDate, validatePhone } from '../../utils/validation';
 import type { Employee, EmployeeCreatePayload, EmployeeUpdatePayload } from '../../types/masters';
 import type { SimpleMaster } from '../../types/masters';
 
@@ -33,6 +33,31 @@ export default function EmployeeFormModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dateError, setDateError] = useState<string | null>(null);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [codeError, setCodeError] = useState<string | null>(null);
+
+  const handlePhoneChange = (value: string) => {
+    const sanitized = sanitizePhoneInput(value);
+    setPhone(sanitized);
+    setPhoneError(validatePhone(sanitized));
+  };
+
+  const handleEmailChange = (value: string) => {
+    setEmail(value);
+    setEmailError(validateEmail(value));
+  };
+
+  const handleCodeChange = (value: string) => {
+    const sanitized = sanitizeEmployeeIdInput(value);
+    setEmployeeCode(sanitized);
+    setCodeError(sanitized ? validateEmployeeId(sanitized) : null);
+  };
+
+  const handleDateChange = (value: string) => {
+    setDateOfRegistration(value);
+    setDateError(validateNotPastDate(value, 'Registered With Company On'));
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -40,12 +65,21 @@ export default function EmployeeFormModal({
       setError('Employee Code and Name are required');
       return;
     }
+    const codeErr = validateEmployeeId(employeeCode, true);
     const regDateErr = validateNotPastDate(dateOfRegistration, 'Registered With Company On');
-    if (regDateErr) {
+    const phoneErr = validatePhone(phone);
+    const emailErr = validateEmail(email);
+    if (codeErr || regDateErr || phoneErr || emailErr) {
+      setCodeError(codeErr);
       setDateError(regDateErr);
+      setPhoneError(phoneErr);
+      setEmailError(emailErr);
       return;
     }
+    setCodeError(null);
     setDateError(null);
+    setPhoneError(null);
+    setEmailError(null);
     setSubmitting(true);
     setError(null);
     try {
@@ -72,9 +106,11 @@ export default function EmployeeFormModal({
             <input
               className={inputClass}
               value={employeeCode}
-              onChange={(e) => setEmployeeCode(e.target.value)}
+              onChange={(e) => handleCodeChange(e.target.value)}
               placeholder="e.g. EMP001"
+              maxLength={10}
             />
+            {codeError && <p className="mt-1 text-xs text-red-600">{codeError}</p>}
           </FormField>
           <FormField label="Name">
             <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} />
@@ -82,10 +118,19 @@ export default function EmployeeFormModal({
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <FormField label="Phone (optional)">
-            <input className={inputClass} value={phone} onChange={(e) => setPhone(e.target.value)} />
+            <input
+              className={inputClass}
+              value={phone}
+              onChange={(e) => handlePhoneChange(e.target.value)}
+              inputMode="numeric"
+              maxLength={10}
+              placeholder="10-digit mobile number"
+            />
+            {phoneError && <p className="mt-1 text-xs text-red-600">{phoneError}</p>}
           </FormField>
           <FormField label="Email (optional)">
-            <input className={inputClass} value={email} onChange={(e) => setEmail(e.target.value)} />
+            <input className={inputClass} value={email} onChange={(e) => handleEmailChange(e.target.value)} />
+            {emailError && <p className="mt-1 text-xs text-red-600">{emailError}</p>}
           </FormField>
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -115,7 +160,8 @@ export default function EmployeeFormModal({
             type="date"
             className={inputClass}
             value={dateOfRegistration}
-            onChange={(e) => setDateOfRegistration(e.target.value)}
+            min={todayDateInputValue()}
+            onChange={(e) => handleDateChange(e.target.value)}
           />
           {dateError && <p className="mt-1 text-xs text-red-600">{dateError}</p>}
         </FormField>

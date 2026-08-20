@@ -161,3 +161,18 @@ export async function apiDownload(
   const match = disposition?.match(/filename="?([^"]+)"?/);
   return { blob: await res.blob(), filename: match?.[1] ?? null };
 }
+
+/** Same as apiDownload but for an endpoint that has to be POSTed to trigger
+ * server-side work first (e.g. "create a fresh backup, then send it") —
+ * a plain GET can't carry that "go do the thing now" semantic. */
+export async function apiPostDownload(
+  path: string,
+): Promise<{ blob: Blob; filename: string | null }> {
+  const res = await fetch(`${BASE_URL}${path}`, { method: 'POST', headers: buildHeaders(false) });
+  if (!res.ok) {
+    throw new Error(`POST ${path} failed with status ${res.status}`);
+  }
+  const disposition = res.headers.get('content-disposition');
+  const match = disposition?.match(/filename="?([^"]+)"?/);
+  return { blob: await res.blob(), filename: match?.[1] ?? null };
+}
